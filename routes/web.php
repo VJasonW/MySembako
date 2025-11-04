@@ -11,3 +11,7 @@ Route::post('/register', [AuthPagesController::class, 'submitRegister'])->name('
 Route::post('/login', [AuthPagesController::class, 'submitLogin'])->name('login.submit');
 
 Route::get('/index', [AuthPagesController::class, 'index'])->name('index');
+
+Route::get('/{any}', function () {
+    return view('app');
+})->where('any', '.*');

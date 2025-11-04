@@ -4,60 +4,219 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - MySembako</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, Helvetica, sans-serif; background:#fafafa; margin:0; }
-        .page { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
-        .container { width:100%; max-width: 560px; margin: 0 auto; background:#fff; padding:32px; border-radius:12px; box-shadow:0 10px 24px rgba(0,0,0,.06); }
-        h1 { font-size: 22px; margin: 0 0 6px; text-align:center; }
-        p.muted { color:#666; font-size:12px; text-align:center; margin-top:0; }
-        a { color:#2563eb; text-decoration:none; }
-        .field { margin: 12px 0; }
-        .field input { width:100%; padding:12px 14px; border:1px solid #e5e7eb; border-radius:10px; background:#fcfcfd; outline:none; }
-        .btn { width:100%; padding:12px; border:0; border-radius:10px; background:#f9b5a7; color:#222; font-weight:600; cursor:pointer; }
-        .btn:hover { background:#f6a997; }
-        .brand { font-weight:700; color:#ef6b49; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            min-height: 100vh;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Poppins', Arial, Helvetica, sans-serif;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 22px 0 0 32px;
+        }
+        .logo {
+            width: auto;
+            height: 36px;
+        }
+        .brand {
+            font-weight: 700;
+            font-size: 16px;
+            color: #ef6b49;
+            letter-spacing: 0.08em;
+        }
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .form-container {
+            width: 100%;
+            max-width: 420px;
+        }
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            margin-top: 16px;
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 4px;
+            margin-top: 16px;
+            text-align: center;
+        }
+        .subtitle {
+            font-size: 17px;
+            text-align: center;
+            margin-bottom: 24px;
+            color: #222;
+            font-weight: 400;
+        }
+        .subtitle a {
+            color: #343bc5;
+            text-decoration: underline;
+            font-weight: 400;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        label {
+            font-size: 15px;
+            font-weight: 500;
+            color: #343434;
+            margin-left: 8px;
+            margin-bottom: 3px;
+            display: block;
+            letter-spacing: 0.02em;
+        }
+        .input-wrapper {
+            background: #fff;
+            border: 1.5px solid #bababa;
+            border-radius: 20px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+        }
+        .input-wrapper.password {
+            padding: 0 12px 0 16px;
+            position: relative;
+        }
+        input {
+            border: none;
+            outline: none;
+            background: transparent;
+            flex: 1;
+            font-size: 15px;
+            font-family: 'Poppins', Arial, Helvetica, sans-serif;
+            color: #252525;
+            padding: 0;
+        }
+        .toggle-password {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            font-size: 14px;
+            color: #999;
+        }
+        .btn-submit {
+            width: 100%;
+            height: 40px;
+            border-radius: 20px;
+            background: #ef6b49;
+            color: #fff;
+            font-weight: 600;
+            font-size: 15px;
+            border: none;
+            margin-top: 10px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            font-family: 'Poppins', Arial, Helvetica, sans-serif;
+            letter-spacing: 0.03em;
+        }
+        .btn-submit:hover {
+            background: #e55a39;
+        }
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
     </style>
-    <link rel="icon" href="/favicon.ico">
-    </head>
+</head>
 <body>
-    <div class="page">
-    <div class="container">
-        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-            <div style="width:20px; height:20px; background:#ef6b49; border-radius:4px;"></div>
-            <div class="brand">MySembako</div>
-        </div>
-        <h1>Welcome to MySembako</h1>
-        <p class="muted">New here? <a href="{{ route('register') }}">Create an account</a>.</p>
+    <div class="header">
+        <img src="/icon/Logo_Mysembako.svg" alt="Logo" class="logo" onerror="this.style.display='none'">
+    </div>
 
-        <form id="login-form" method="POST" action="{{ route('login.submit') }}">
-            @csrf
-            <div class="field">
-                <input type="text" name="username" placeholder="Username" required>
+    <div class="content">
+        <div class="form-container">
+            <h1>Welcome to MySembako</h1>
+            <div class="subtitle">
+                New here? <a href="{{ route('register') }}">Create an account</a>
             </div>
-            <div class="field">
-                <input type="password" name="password" placeholder="Password" required>
-            </div>
-            <div style="text-align:right; margin-top:4px; font-size:12px; color:#777;">
-                <a href="#" style="color:#9ca3af; text-decoration:none;">Forgot password?</a>
-            </div>
-            <button class="btn" type="submit" style="margin-top:12px;">Login</button>
-            <div style="display:flex; align-items:center; gap:12px; margin:16px 0 0;">
-                <div style="flex:1; height:1px; background:#e5e7eb;"></div>
-                <div style="font-size:12px; color:#777;">or</div>
-                <div style="flex:1; height:1px; background:#e5e7eb;"></div>
-            </div>
-            <div style="display:flex; justify-content:center; gap:14px; margin-top:10px;">
-                <a href="#" title="Login with Google" style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%; border:1px solid #e5e7eb; background:#fff;">
-                    <span style="font-weight:700; color:#ea4335;">G</span>
-                </a>
-                <a href="#" title="Login with Facebook" style="display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:50%; border:1px solid #e5e7eb; background:#fff;">
-                    <span style="font-weight:700; color:#1877f2;">f</span>
-                </a>
-            </div>
-        </form>
+
+            @if(session('success'))
+                <div class="alert alert-success">
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if($errors->any())
+                <div class="alert alert-error">
+                    <ul style="margin: 0; padding-left: 20px;">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('login.submit') }}">
+                @csrf
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <div class="input-wrapper">
+                        <input type="email" id="email" name="email" placeholder="Email" value="{{ old('email') }}" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="input-wrapper password">
+                        <input type="password" id="password" name="password" placeholder="Password" required>
+                        <button type="button" class="toggle-password" onclick="togglePassword('password')" aria-label="Show/Hide Password">
+                            <img src="/icon/HideIcon.svg" alt="Hide Password" class="toggle-icon" id="icon-password" style="width:22px;height:22px;vertical-align:middle;">
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit">Login</button>
+            </form>
+        </div>
     </div>
-    </div>
+
+    <script>
+        function togglePassword(fieldId) {
+            const passwordInput = document.getElementById(fieldId);
+            // Cari button toggle setelah input, bukan nextElementSibling (karena bisa ada whitespace/teks node)
+            // Lebih aman gunakan parentNode.querySelector
+            const toggleBtn = passwordInput.parentNode.querySelector('.toggle-password');
+            const icon = toggleBtn.querySelector('img');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.src = '/icon/UnhideIcon.svg';
+                icon.alt = 'Show Password';
+            } else {
+                passwordInput.type = 'password';
+                icon.src = '/icon/HideIcon.svg';
+                icon.alt = 'Hide Password';
+            }
+        }
+    </script>
 </body>
 </html>
-
 

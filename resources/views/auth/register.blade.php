@@ -4,64 +4,235 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register - MySembako</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, Helvetica, sans-serif; background:#fafafa; margin:0; }
-        .page { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
-        .container { width:100%; max-width: 560px; margin: 0 auto; background:#fff; padding:32px; border-radius:12px; box-shadow:0 10px 24px rgba(0,0,0,.06); }
-        h1 { font-size: 22px; margin: 0 0 6px; text-align:center; }
-        p.muted { color:#666; font-size:12px; text-align:center; margin-top:0; }
-        a { color:#2563eb; text-decoration:none; }
-        .field { margin: 12px 0; }
-        .field input { width:100%; padding:12px 14px; border:1px solid #e5e7eb; border-radius:10px; background:#fcfcfd; outline:none; }
-        .btn { width:100%; padding:12px; border:0; border-radius:10px; background:#ef6b49; color:#fff; font-weight:600; cursor:pointer; }
-        .btn:hover { background:#e15536; }
-        .brand { font-weight:700; color:#ef6b49; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            min-height: 100vh;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Poppins', Arial, Helvetica, sans-serif;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 22px 0 0 32px;
+        }
+        .logo {
+            width: auto;
+            height: 36px;
+            margin-right: 8px;
+        }
+        .brand {
+            font-weight: 700;
+            font-size: 16px;
+            color: #ef6b49;
+            letter-spacing: 0.08em;
+        }
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .form-container {
+            width: 100%;
+            max-width: 420px;
+        }
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            margin-top: 16px;
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 4px;
+            margin-top: 16px;
+            text-align: center;
+        }
+        .subtitle {
+            font-size: 17px;
+            text-align: center;
+            margin-bottom: 24px;
+            color: #222;
+            font-weight: 400;
+        }
+        .subtitle a {
+            color: #343bc5;
+            text-decoration: underline;
+            font-weight: 400;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        label {
+            font-size: 15px;
+            font-weight: 500;
+            color: #343434;
+            margin-left: 8px;
+            margin-bottom: 3px;
+            display: block;
+            letter-spacing: 0.02em;
+        }
+        .input-wrapper {
+            background: #fff;
+            border: 1.5px solid #bababa;
+            border-radius: 20px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+        }
+        .input-wrapper.password {
+            padding: 0 12px 0 16px;
+            position: relative;
+        }
+        .input-wrapper.password-confirm {
+            padding: 0 12px 0 16px;
+            position: relative;
+        }
+        input {
+            border: none;
+            outline: none;
+            background: transparent;
+            flex: 1;
+            font-size: 15px;
+            font-family: 'Poppins', Arial, Helvetica, sans-serif;
+            color: #252525;
+            padding: 0;
+        }
+        .toggle-password {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            font-size: 14px;
+            color: #999;
+        }
+        .btn-submit {
+            width: 100%;
+            height: 40px;
+            border-radius: 20px;
+            background: #ef6b49;
+            color: #fff;
+            font-weight: 600;
+            font-size: 15px;
+            border: none;
+            margin-top: 10px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            font-family: 'Poppins', Arial, Helvetica, sans-serif;
+            letter-spacing: 0.03em;
+        }
+        .btn-submit:hover {
+            background: #e55a39;
+        }
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
     </style>
-    <link rel="icon" href="/favicon.ico">
 </head>
 <body>
-    <div class="page">
-    <div class="container">
-        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-            <div style="width:20px; height:20px; background:#ef6b49; border-radius:4px;"></div>
-            <div class="brand">MySembako</div>
-        </div>
-        <h1>Create New Account</h1>
-        <p class="muted">Already have an account? <a href="{{ route('login') }}">Login</a>.</p>
+    <div class="header">
+        <img src="/icon/Logo_Mysembako.svg" alt="Logo" class="logo" onerror="this.style.display='none'">
+    </div>
 
-        <form id="register-form" method="POST" action="{{ route('register.submit') }}">
-            @csrf
-            @if ($errors->any())
-                <div style="background:#fff1f2;border:1px solid #fecdd3;color:#9f1239;padding:10px;border-radius:8px;margin-bottom:10px;">
-                    <ul style="margin:0;padding-left:18px;">
-                        @foreach ($errors->all() as $error)
+    <div class="content">
+        <div class="form-container">
+            <h1>Create an Account</h1>
+            <div class="subtitle">
+                Already have an account? <a href="{{ route('login') }}">Log in</a>
+            </div>
+
+            @if($errors->any())
+                <div class="alert alert-error">
+                    <ul style="margin: 0; padding-left: 20px;">
+                        @foreach($errors->all() as $error)
                             <li>{{ $error }}</li>
                         @endforeach
                     </ul>
                 </div>
             @endif
-            @if (session('success'))
-                <div style="background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;padding:10px;border-radius:8px;margin-bottom:10px;">
-                    {{ session('success') }}
+
+            <form method="POST" action="{{ route('register.submit') }}">
+                @csrf
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="name" name="name" placeholder="Name" value="{{ old('name') }}" required>
+                    </div>
                 </div>
-            @endif
-            <div class="field">
-                <input type="text" name="name" placeholder="Name" value="{{ old('name') }}" required>
-            </div>
-            <div class="field">
-                <input type="email" name="email" placeholder="Email" value="{{ old('email') }}" required>
-            </div>
-            <div class="field">
-                <input type="password" name="password" placeholder="Password" required>
-            </div>
-            <div class="field">
-                <input type="password" name="password_confirmation" placeholder="Confirm Password" required>
-            </div>
-            <button class="btn" type="submit">Sign Up</button>
-        </form>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <div class="input-wrapper">
+                        <input type="email" id="email" name="email" placeholder="Email" value="{{ old('email') }}" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="input-wrapper password">
+                        <input type="password" id="password" name="password" placeholder="Password" required>
+                        <button type="button" class="toggle-password" onclick="togglePassword('password')" aria-label="Show/Hide Password">
+                            <img src="/icon/HideIcon.svg" alt="Hide Password" class="toggle-icon" id="icon-password" style="width:22px;height:22px;vertical-align:middle;">
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password_confirmation">Confirm Password</label>
+                    <div class="input-wrapper password-confirm">
+                        <input type="password" id="password_confirmation" name="password_confirmation" placeholder="Confirm Password" required>
+                        <button type="button" class="toggle-password" onclick="togglePassword('password_confirmation')" aria-label="Show/Hide Password">
+                            <img src="/icon/HideIcon.svg" alt="Hide Password" class="toggle-icon" id="icon-password_confirmation" style="width:22px;height:22px;vertical-align:middle;">
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit" onclick="redirectAfterSubmit(event)">Register</button>
+                <script>
+                    function redirectAfterSubmit(e) {
+                        // Allow normal form submit.
+                        // Redirection will be handled after successful registration on backend.
+                        // On backend, after saving data, use: return redirect()->route('login')->with('success', 'Registration successful. Please login.');
+                    }
+                </script>
+            </form>
+        </div>
     </div>
-    </div>
+
+    <script>
+        function togglePassword(fieldId) {
+            const passwordInput = document.getElementById(fieldId);
+            const toggleBtn = passwordInput.nextElementSibling;
+            const icon = toggleBtn.querySelector('img');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.src = '/icon/UnhideIcon.svg';
+                icon.alt = 'Show Password';
+            } else {
+                passwordInput.type = 'password';
+                icon.src = '/icon/HideIcon.svg';
+                icon.alt = 'Hide Password';
+            }
+        }
+    </script>
 </body>
 </html>
-
 
