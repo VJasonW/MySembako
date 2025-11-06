@@ -175,7 +175,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('login.submit') }}">
+            <form method="POST" action="{{ route('login.submit') }}" id="loginForm">
                 @csrf
                 <div class="form-group">
                     <label for="email">Email</label>
@@ -202,8 +202,6 @@
     <script>
         function togglePassword(fieldId) {
             const passwordInput = document.getElementById(fieldId);
-            // Cari button toggle setelah input, bukan nextElementSibling (karena bisa ada whitespace/teks node)
-            // Lebih aman gunakan parentNode.querySelector
             const toggleBtn = passwordInput.parentNode.querySelector('.toggle-password');
             const icon = toggleBtn.querySelector('img');
             if (passwordInput.type === 'password') {
@@ -216,7 +214,19 @@
                 icon.alt = 'Hide Password';
             }
         }
+
+        // Setelah login berhasil, arahkan ke file: D:\Project\SoftwareEng\resources\js\components\commons\molecules\HomePage\index.jsx
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Simulasi login sukses. Di aplikasi nyata, seharusnya proses autentikasi dulu di backend.
+
+            // Karena Anda ingin diarahkan ke berkas index.jsx sesuai path lokal, 
+            // namun browser hanya bisa redirect ke URL (bukan ke path file di komputer lokal),
+            // berikut akan diarahkan ke jalur frontend Anda.
+            // SILAKAN SESUAIKAN path URL berikut dengan routing React/laravel Anda jika ada.
+            window.location.href = '/js/components/commons/molecules/HomePage/index.jsx';
+        });
     </script>
 </body>
 </html>
-
