@@ -6,6 +6,10 @@ console.log('AppRoutes loaded');
 
 const AppRoutes = [
   {
+    path: '/home',
+    element: <HomePage />,
+  },
+  {
     path: '/',
     element: <Intro />,
   },
