@@ -14,9 +14,10 @@ class AuthPagesController extends BaseController
 
     public function submitLogin(Request $request)
     {
-        // This is a placeholder submit that simply redirects to index.
+        // This is a placeholder submit that simply redirects to home.
         // Implement real authentication later.
-        return redirect()->route('index');
+        // Redirect ke route /home yang akan menampilkan HomePage React component
+        return redirect('/home');
     }
 
     public function showRegister()
