@@ -8,6 +8,7 @@
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
+        "@vitejs/plugin-react": "^5.1.0",
         "axios": "^1.11.0",
         "concurrently": "^9.0.1",
         "laravel-vite-plugin": "^2.0.0",
@@ -31,5 +32,10 @@
     "bugs": {
         "url": "https://github.com/<username>/<repository>/issues"
     },
-    "homepage": "https://github.com/<username>/<repository>#readme"
+    "homepage": "https://github.com/<username>/<repository>#readme",
+    "dependencies": {
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0",
+        "react-router-dom": "^7.9.5"
+    }
 }

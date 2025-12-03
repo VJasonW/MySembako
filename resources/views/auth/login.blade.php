@@ -215,18 +215,8 @@
             }
         }
 
-        // Setelah login berhasil, arahkan ke file: D:\Project\SoftwareEng\resources\js\components\commons\molecules\HomePage\index.jsx
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            // Simulasi login sukses. Di aplikasi nyata, seharusnya proses autentikasi dulu di backend.
-
-            // Karena Anda ingin diarahkan ke berkas index.jsx sesuai path lokal, 
-            // namun browser hanya bisa redirect ke URL (bukan ke path file di komputer lokal),
-            // berikut akan diarahkan ke jalur frontend Anda.
-            // SILAKAN SESUAIKAN path URL berikut dengan routing React/laravel Anda jika ada.
-            window.location.href = '/js/components/commons/molecules/HomePage/index.jsx';
-        });
+        // Form akan di-submit ke backend dan setelah login berhasil,
+        // controller akan redirect ke /home yang menampilkan HomePage React component
     </script>
 </body>
 </html>
