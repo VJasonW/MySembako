@@ -3,7 +3,11 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthPagesController;
 
-Route::get('/', [AuthPagesController::class, 'showLogin'])->name('login');
+Route::get('/', function () {
+    return view('app');
+})->name('intro');
+
+Route::get('/login', [AuthPagesController::class, 'showLogin'])->name('login');
 
 Route::get('/register', [AuthPagesController::class, 'showRegister'])->name('register');
 Route::post('/register', [AuthPagesController::class, 'submitRegister'])->name('register.submit');

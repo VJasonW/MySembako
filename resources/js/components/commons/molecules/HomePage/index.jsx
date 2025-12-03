@@ -1,5 +1,7 @@
 import React from "react";
-import Searchbar from "../../atoms/Searchbar";
+
+
+console.log('HomePage component loaded');
 
 const products = [
   {
@@ -77,6 +79,7 @@ const products = [
 ];
 
 function HomePage() {
+  console.log('HomePage rendering...');
   return (
     <div
       style={{
@@ -116,7 +119,6 @@ function HomePage() {
           MySembako
         </span>
         <div style={{ flex: 1 }}>
-          <Searchbar placeholder="Cari" />
         </div>
         <div style={{ display: "flex", gap: 12 }}>
           <button
