@@ -10,10 +10,6 @@ const AppRoutes = [
     element: <HomePage />,
   },
   {
-    path: '/',
-    element: <HomePage />,
-  },
-  {
     path: '/bill',
     element: <React.Suspense fallback={<div>Loading...</div>}>
       {React.createElement(
