@@ -235,7 +235,13 @@ function HomePage() {
       {showModal && selectedProduct && (
         // Ganti modal jadi floating tanpa overlay background
         <div className="fixed left-0 top-0 w-full h-full z-40 pointer-events-none">
-          <div className="absolute pointer-events-auto left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-xl p-6 max-w-xs w-full relative">
+          <div
+            className="absolute pointer-events-auto left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-xl p-6 max-w-xs w-full relative"
+            style={{
+              boxShadow:
+                "0 4px 24px 0 rgba(55, 51, 48, 0.13), 0 2px 8px 0 rgba(180,131,91,0.12)",
+            }}
+          >
             <button
               onClick={closeModal}
               className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 text-2xl font-bold focus:outline-none"
