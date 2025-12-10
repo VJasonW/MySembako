@@ -212,9 +212,9 @@ const LocationPage = () => {
         >
           {/* Ilustrasi */}
           <img
-            src={illustrationUrl}
+            src="/icon/Location.svg"
             alt="Location Illustration"
-            style={{ width: 128, height: 128, margin: "0 auto" }}
+            style={{ width: 237, height: 210, margin: "0 auto" }}
           />
         </div>
 
