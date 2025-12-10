@@ -145,6 +145,30 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+        .btn-buka-toko {
+            width: 100%;
+            height: 40px;
+            border-radius: 20px;
+            background: transparent;
+            color: #ef6b49;
+            font-weight: 600;
+            font-size: 15px;
+            border: 2px solid #ef6b49;
+            margin-top: 8px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            font-family: 'Poppins', Arial, Helvetica, sans-serif;
+            letter-spacing: 0.03em;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        .btn-buka-toko:hover {
+            background: #ef6b49;
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -162,6 +186,12 @@
             @if(session('success'))
                 <div class="alert alert-success">
                     {{ session('success') }}
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="alert alert-error">
+                    {{ session('error') }}
                 </div>
             @endif
 
@@ -196,6 +226,10 @@
 
                 <button type="submit" class="btn-submit">Login</button>
             </form>
+
+            <a href="{{ route('buka-toko') }}" class="btn-buka-toko">
+                Buka Toko
+            </a>
         </div>
     </div>
 
@@ -215,8 +249,12 @@
             }
         }
 
-        // Form akan di-submit ke backend dan setelah login berhasil,
-        // controller akan redirect ke /home yang menampilkan HomePage React component
+        // Login hanya untuk akun yang telah terdaftar pada database.
+        // User akan login cukup dengan email & password.
+        // Sistem backend akan otomatis memfilter dan mengenali role user (buyer, owner, admin)
+        // Redirect akan mengikuti role user yang ditemukan di database:
+        // buyer -> /home, owner -> /owner/dashboard, admin -> /admin/dashboard
+        // Jika email/password tidak sesuai atau tidak terdaftar, error akan tampil di sini.
     </script>
 </body>
 </html>

@@ -145,6 +145,11 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
     </style>
 </head>
 <body>
@@ -154,10 +159,16 @@
 
     <div class="content">
         <div class="form-container">
-            <h1>Create an Account</h1>
+            <h1>Buat Akun Baru</h1>
             <div class="subtitle">
-                Already have an account? <a href="{{ route('login') }}">Log in</a>
+                Sudah punya akun? <a href="{{ route('login') }}">Masuk</a>
             </div>
+
+            @if(session('success'))
+                <div class="alert alert-success">
+                    {{ session('success') }}
+                </div>
+            @endif
 
             @if($errors->any())
                 <div class="alert alert-error">
@@ -169,12 +180,17 @@
                 </div>
             @endif
 
+            <!-- 
+                Semua data registrasi (Name, Email, Phone, Password) akan disimpan ke tabel users di database.
+                Pastikan backend menerima input ini dan melakukan validasi di controller (lihat AuthPagesController@submitRegister).
+                Formulir ini akan menambahkan data user baru ke database users jika validasi berhasil.
+            -->
             <form method="POST" action="{{ route('register.submit') }}">
                 @csrf
                 <div class="form-group">
-                    <label for="name">Name</label>
+                    <label for="name">Nama Lengkap</label>
                     <div class="input-wrapper">
-                        <input type="text" id="name" name="name" placeholder="Name" value="{{ old('name') }}" required>
+                        <input type="text" id="name" name="name" placeholder="Nama Lengkap" value="{{ old('name') }}" required>
                     </div>
                 </div>
 
@@ -182,6 +198,13 @@
                     <label for="email">Email</label>
                     <div class="input-wrapper">
                         <input type="email" id="email" name="email" placeholder="Email" value="{{ old('email') }}" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">No Telepon</label>
+                    <div class="input-wrapper">
+                        <input type="tel" id="phone" name="phone" placeholder="Contoh: 08123456789" value="{{ old('phone') }}" pattern="[\d\s+]{6,20}" required>
                     </div>
                 </div>
 
@@ -196,24 +219,21 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="password_confirmation">Confirm Password</label>
+                    <label for="password_confirmation">Konfirmasi Password</label>
                     <div class="input-wrapper password-confirm">
-                        <input type="password" id="password_confirmation" name="password_confirmation" placeholder="Confirm Password" required>
+                        <input type="password" id="password_confirmation" name="password_confirmation" placeholder="Konfirmasi Password" required>
                         <button type="button" class="toggle-password" onclick="togglePassword('password_confirmation')" aria-label="Show/Hide Password">
                             <img src="/icon/HideIcon.svg" alt="Hide Password" class="toggle-icon" id="icon-password_confirmation" style="width:22px;height:22px;vertical-align:middle;">
                         </button>
                     </div>
                 </div>
 
-                <button type="submit" class="btn-submit" onclick="redirectAfterSubmit(event)">Register</button>
-                <script>
-                    function redirectAfterSubmit(e) {
-                        // Allow normal form submit.
-                        // Redirection will be handled after successful registration on backend.
-                        // On backend, after saving data, use: return redirect()->route('login')->with('success', 'Registration successful. Please login.');
-                    }
-                </script>
+                <button type="submit" class="btn-submit">Daftar</button>
             </form>
+            <div class="subtitle" style="font-size:13px;color:#888;line-height:1.6;">
+                Dengan mendaftar, Anda menyetujui kebijakan privasi & ketentuan penggunaan MySembako.<br>
+                Semua data registrasi Anda akan tersimpan di database pengguna MySembako.
+            </div>
         </div>
     </div>
 
@@ -235,4 +255,3 @@
     </script>
 </body>
 </html>
-
