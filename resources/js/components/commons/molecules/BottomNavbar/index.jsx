@@ -39,7 +39,7 @@ const BottomNavbar = () => {
         onClick={handleHomeClick}
       >
         <img
-          src={activeTab === 'home' ? "/icon/homeon.svg" : "/icon/homeoff.svg"}
+          src={activeTab === 'home' ? "/icon/Homeon.svg" : "/icon/Homeoff.svg"}
           alt="Home"
           className="nav-icon w-6 h-6"
         />
@@ -51,7 +51,7 @@ const BottomNavbar = () => {
         onClick={handleCartClick}
       >
         <img
-          src={activeTab === 'cart' ? "/icon/carton.svg" : "/icon/cartoff.svg"}
+          src={activeTab === 'cart' ? "/icon/Carton.svg" : "/icon/Cartoff.svg"}
           alt="cart"
           className="nav-icon w-6 h-6"
         />
@@ -63,7 +63,7 @@ const BottomNavbar = () => {
         onClick={handleReceiptClick}
       >
         <img
-          src={activeTab === 'receipt' ? "/icon/receipton.svg" : "/icon/receiptoff.svg"}
+          src={activeTab === 'receipt' ? "/icon/Receipton.svg" : "/icon/Receiptoff.svg"}
           alt="receipt"
           className="nav-icon w-6 h-6"
         />
@@ -75,7 +75,7 @@ const BottomNavbar = () => {
         onClick={handleLocationClick}
       >
         <img
-          src={activeTab === 'location' ? "/icon/locon.svg" : "/icon/locoff.svg"}
+          src={activeTab === 'location' ? "/icon/Locon.svg" : "/icon/Locoff.svg"}
           alt="location"
           className="nav-icon w-6 h-6"
         />
