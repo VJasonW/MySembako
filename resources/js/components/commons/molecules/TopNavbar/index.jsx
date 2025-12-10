@@ -123,7 +123,8 @@ const TopNavbar = ({
     } finally {
       setUserName("Pengguna");
       setShowProfile(false);
-      navigate("/login");
+      // Gunakan full reload agar halaman login dari Laravel (blade) di-load
+      window.location.href = "/login";
     }
   };
 
