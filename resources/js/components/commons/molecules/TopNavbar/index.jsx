@@ -36,6 +36,13 @@ const TopNavbar = ({
     location: "",
     role_id: null,
   });
+  const [formData, setFormData] = useState({
+    name: userNameProp,
+    email: "",
+    phone: "",
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingLocation, setSavingLocation] = useState(false);
   // Ukuran tombol medium: di-set ke 40px (icon medium) baik mobile maupun desktop
   const [buttonSize, setButtonSize] = useState(40);
 
@@ -71,6 +78,11 @@ const TopNavbar = ({
             role_id: data.role_id || null,
           });
           setUserName(data.name || "Pengguna");
+          setFormData({
+            name: data.name || "",
+            email: data.email || "",
+            phone: data.phone || "",
+          });
         }
       } catch (error) {
         console.error("Gagal mengambil profil user:", error);
@@ -79,6 +91,122 @@ const TopNavbar = ({
 
     fetchUser();
   }, [userNameProp]);
+
+  const handleProfileChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      setSavingProfile(true);
+      const csrfToken = document
+        .querySelector('meta[name="csrf-token"]')
+        ?.getAttribute("content");
+
+      const res = await fetch("/api/user", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-TOKEN": csrfToken || "",
+          Accept: "application/json",
+        },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+        }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        alert(error.message || "Gagal menyimpan profil");
+        return;
+      }
+
+      const data = await res.json();
+      setUserData((prev) => ({ ...prev, ...data }));
+      setUserName(data.name || "Pengguna");
+      alert("Profil berhasil diperbarui");
+    } catch (error) {
+      console.error("Gagal menyimpan profil:", error);
+      alert("Terjadi kesalahan saat menyimpan profil");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const cityFromCoords = (lat, lng) => {
+    const boxes = [
+      { name: "Jakarta", lat: [-6.4, -6.0], lng: [106.6, 107.0] },
+      { name: "Semarang", lat: [-7.1, -6.8], lng: [110.3, 110.6] },
+      { name: "Surabaya", lat: [-7.4, -7.1], lng: [112.6, 112.9] },
+      { name: "Jogja", lat: [-7.9, -7.6], lng: [110.3, 110.6] },
+    ];
+
+    const match = boxes.find(
+      (b) => lat >= b.lat[0] && lat <= b.lat[1] && lng >= b.lng[0] && lng <= b.lng[1]
+    );
+    return match ? match.name : null;
+  };
+
+  const handleActivateLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation tidak didukung di browser ini.");
+      return;
+    }
+
+    setSavingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const city = cityFromCoords(latitude, longitude);
+
+          if (!city) {
+            alert("Lokasi tidak dikenali. Pastikan berada di Jakarta/Semarang/Surabaya/Jogja.");
+            return;
+          }
+
+          const csrfToken = document
+            .querySelector('meta[name="csrf-token"]')
+            ?.getAttribute("content");
+
+          const res = await fetch("/api/user", {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-TOKEN": csrfToken || "",
+              Accept: "application/json",
+            },
+            credentials: "same-origin",
+            body: JSON.stringify({ location: city }),
+          });
+
+          if (!res.ok) {
+            const error = await res.json().catch(() => ({}));
+            alert(error.message || "Gagal menyimpan lokasi");
+            return;
+          }
+
+          const data = await res.json();
+          setUserData((prev) => ({ ...prev, ...data }));
+          alert("Lokasi berhasil diperbarui menjadi " + city);
+        } catch (err) {
+          console.error("Gagal memperbarui lokasi:", err);
+          alert("Terjadi kesalahan saat memperbarui lokasi");
+        } finally {
+          setSavingLocation(false);
+        }
+      },
+      (err) => {
+        console.error("Geolocation error:", err);
+        alert("Tidak dapat mengakses lokasi. Pastikan izin lokasi diaktifkan.");
+        setSavingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    );
+  };
 
   // Handler: Navigasi Logo
   const handleLogoClick = useCallback(() => {
@@ -339,10 +467,10 @@ const TopNavbar = ({
                 </label>
                 <input
                   type="text"
-                  value={userData.name || ""}
-                  readOnly
-                  className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none bg-gray-50"
-                  placeholder="Nama tidak tersedia"
+                  value={formData.name || ""}
+                  onChange={e => handleProfileChange("name", e.target.value)}
+                  className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none"
+                  placeholder="Masukkan nama Anda"
                 />
               </div>
               <div>
@@ -350,11 +478,11 @@ const TopNavbar = ({
                   Email
                 </label>
                 <input
-                  type="text"
-                  value={userData.email || ""}
-                  readOnly
-                  className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none bg-gray-50"
-                  placeholder="Email tidak tersedia"
+                  type="email"
+                  value={formData.email || ""}
+                  onChange={e => handleProfileChange("email", e.target.value)}
+                  className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none"
+                  placeholder="Masukkan email Anda"
                 />
               </div>
               <div>
@@ -363,27 +491,42 @@ const TopNavbar = ({
                 </label>
                 <input
                   type="text"
-                  value={userData.phone || ""}
-                  readOnly
-                  className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none bg-gray-50"
-                  placeholder="Telepon tidak tersedia"
+                  value={formData.phone || ""}
+                  onChange={e => handleProfileChange("phone", e.target.value)}
+                  className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none"
+                  placeholder="Masukkan nomor telepon"
                 />
               </div>
               <div>
                 <label className="block mb-2 text-[#333] text-sm font-medium">
-                  Kota
+                  Kota (dibaca otomatis)
                 </label>
                 <input
                   type="text"
                   value={userData.location || ""}
                   readOnly
                   className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none bg-gray-50"
-                  placeholder="Kota tidak tersedia"
+                  placeholder="Belum ada lokasi"
                 />
+                <button
+                  type="button"
+                  onClick={handleActivateLocation}
+                  className="mt-2 w-full p-3 bg-[#E65100] text-white border-none rounded-lg text-base font-bold cursor-pointer disabled:opacity-70"
+                  disabled={savingLocation}
+                >
+                  {savingLocation ? "Mengambil lokasi..." : "Aktifkan lokasi"}
+                </button>
               </div>
             </div>
 
             <div className="flex flex-col gap-3">
+              <button
+                onClick={handleSaveProfile}
+                className="w-full p-3 bg-[#E65100] text-white border-none rounded-lg text-base font-bold cursor-pointer disabled:opacity-70"
+                disabled={savingProfile}
+              >
+                {savingProfile ? "Menyimpan..." : "Simpan Profil"}
+              </button>
               <button
                 onClick={handleLogout}
                 className="w-full p-3 bg-red-500 hover:bg-red-600 text-white border-none rounded-lg text-base font-bold cursor-pointer mt-2 transition"

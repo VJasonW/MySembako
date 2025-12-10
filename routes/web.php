@@ -64,6 +64,33 @@ Route::middleware(['auth'])->prefix('api')->name('api.')->group(function () {
         ]);
     })->name('user');
     
+    // Update user profile (nama, email, telepon, lokasi)
+    Route::patch('/user', function (\Illuminate\Http\Request $request) {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|email|max:255|unique:users,email,' . $user->id,
+            'phone' => 'sometimes|nullable|string|max:20',
+            'location' => 'sometimes|nullable|string|max:255',
+        ]);
+
+        $user->fill($validated);
+        $user->save();
+
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'location' => $user->location,
+            'role_id' => $user->role_id,
+        ]);
+    })->name('user.update');
+    
     // Addresses API
     Route::apiResource('addresses', AddressController::class);
     
