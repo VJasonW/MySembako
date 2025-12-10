@@ -136,4 +136,43 @@ class OrderController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Mark order as completed (only allowed for shipped orders by the buyer)
+     */
+    public function complete(Order $order)
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        // Verify order belongs to user
+        if ($order->buyer_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Only allow complete for shipped orders
+        if ($order->status !== 'shipped') {
+            return response()->json([
+                'message' => 'Hanya pesanan dengan status dikirim yang dapat diselesaikan'
+            ], 400);
+        }
+
+        try {
+            $order->update(['status' => 'done']);
+
+            return response()->json([
+                'message' => 'Pesanan ditandai selesai',
+                'order' => $order->fresh(['items.product']),
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Terjadi kesalahan saat menyelesaikan pesanan',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

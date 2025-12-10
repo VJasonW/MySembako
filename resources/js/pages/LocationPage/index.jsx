@@ -193,25 +193,6 @@ const LocationPage = () => {
       {/* Top Navbar */}
       <TopNavbar />
 
-      {/* Kota di kanan atas bila sudah tersimpan */}
-      {!loading && userCity && (
-        <div style={{ position: "absolute", top: 70, right: 16, zIndex: 10 }}>
-          <div
-            style={{
-              background: "#FFE5D0",
-              color: "#BF4413",
-              padding: "8px 14px",
-              borderRadius: "999px",
-              fontWeight: 600,
-              fontSize: 14,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-            }}
-          >
-            {userCity}
-          </div>
-        </div>
-      )}
-
       {/* Konten utama */}
       <div
         style={{

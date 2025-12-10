@@ -68,6 +68,10 @@
                    class="px-4 py-2 rounded-lg font-semibold text-sm transition-colors {{ $status === 'paid' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}">
                     Paid
                 </a>
+                <a href="{{ route('owner.orders.index', ['status' => 'done']) }}" 
+                   class="px-4 py-2 rounded-lg font-semibold text-sm transition-colors {{ $status === 'done' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}">
+                    Done
+                </a>
                 <a href="{{ route('owner.orders.index', ['status' => 'cancel']) }}" 
                    class="px-4 py-2 rounded-lg font-semibold text-sm transition-colors {{ $status === 'cancel' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}">
                     Cancel

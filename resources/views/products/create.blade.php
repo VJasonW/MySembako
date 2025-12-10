@@ -69,16 +69,23 @@
                     <label for="kategori" class="block text-sm font-semibold text-gray-700 mb-2">
                         Kategori <span class="text-red-500">*</span>
                     </label>
-                    <input 
-                        type="text" 
-                        id="kategori" 
-                        name="kategori" 
-                        value="{{ old('kategori') }}" 
-                        required
-                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-orange-500 transition-colors"
-                        placeholder="Masukkan kategori produk"
-                    >
-                    <small class="text-gray-500 block">Misal: Beras, Minuman, Sembako, dll.</small>
+                    <div class="space-y-2" id="kategori-wrapper" data-categories='@json($categories->pluck("name"))'>
+                        <div class="relative">
+                            <input 
+                                type="text" 
+                                id="kategori" 
+                                name="kategori" 
+                                value="{{ old('kategori') }}" 
+                                required
+                                class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-orange-500 transition-colors"
+                                placeholder="Pilih atau ketik kategori (bisa kategori baru)"
+                                autocomplete="off"
+                            >
+                            <div id="kategori-suggestions" class="absolute z-20 mt-1 w-full bg-white border border-orange-100 rounded-xl shadow-sm hidden max-h-56 overflow-auto"></div>
+                        </div>
+                        <div class="flex flex-wrap gap-2" id="kategori-chips"></div>
+                        <small class="text-gray-500 block">Klik chip di atas atau ketik untuk mencari/menambah kategori baru.</small>
+                    </div>
                 </div>
                 {{-- 
                     Catatan: 
@@ -173,6 +180,69 @@
     </main>
 
     <script>
+        // Utility sederhana untuk UI kategori yang lebih ramah
+        (function initKategoriUI() {
+            const wrapper = document.getElementById('kategori-wrapper');
+            if (!wrapper) return;
+
+            const input = document.getElementById('kategori');
+            const suggestionsBox = document.getElementById('kategori-suggestions');
+            const chipsContainer = document.getElementById('kategori-chips');
+            const categories = JSON.parse(wrapper.dataset.categories || '[]');
+
+            const renderChips = () => {
+                chipsContainer.innerHTML = '';
+                categories.slice(0, 20).forEach((cat) => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'px-3 py-1.5 rounded-full text-sm border border-orange-200 text-gray-800 bg-orange-50 hover:border-orange-400 transition';
+                    btn.textContent = cat;
+                    btn.onclick = () => {
+                        input.value = cat;
+                        hideSuggestions();
+                    };
+                    chipsContainer.appendChild(btn);
+                });
+            };
+
+            const showSuggestions = (items) => {
+                if (!items.length) {
+                    hideSuggestions();
+                    return;
+                }
+                suggestionsBox.innerHTML = items
+                    .map((item) => `<button type="button" class="block w-full text-left px-4 py-2 hover:bg-orange-50">${item}</button>`)
+                    .join('');
+                Array.from(suggestionsBox.children).forEach((btn) => {
+                    btn.onclick = () => {
+                        input.value = btn.textContent.trim();
+                        hideSuggestions();
+                    };
+                });
+                suggestionsBox.classList.remove('hidden');
+            };
+
+            const hideSuggestions = () => {
+                suggestionsBox.classList.add('hidden');
+            };
+
+            input.addEventListener('input', (e) => {
+                const q = e.target.value.toLowerCase().trim();
+                if (!q) {
+                    hideSuggestions();
+                    return;
+                }
+                const filtered = categories.filter((cat) => cat.toLowerCase().includes(q)).slice(0, 8);
+                showSuggestions(filtered);
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!wrapper.contains(e.target)) hideSuggestions();
+            });
+
+            renderChips();
+        })();
+
         function previewImage(input) {
             const preview = document.getElementById('preview');
             const previewImg = document.getElementById('preview-img');
@@ -189,12 +259,6 @@
             } else {
                 preview.classList.add('hidden');
             }
-        }
-
-        // Dummy function for adding category (expand as needed for your actual category feature)
-        function tambahKategoriBaru() {
-            alert('Silakan isikan kategori baru pada kolom input di samping.');
-            document.getElementById('kategori').focus();
         }
     </script>
 </body>

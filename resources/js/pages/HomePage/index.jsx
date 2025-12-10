@@ -6,11 +6,28 @@ import BottomNavbar from "../../components/commons/molecules/BottomNavbar";
 // const SECONDARY_COLOR = "#FFCCB8";
 // const BACKGROUND_COLOR = "#FFE6DD";
 
+const DEFAULT_CATEGORIES = [
+  "Beras",
+  "Minyak Goreng",
+  "Gula Pasir",
+  "Telur",
+  "Bumbu Dapur",
+  "Mie & Pasta",
+  "Kopi & Teh",
+  "Susu & Olahan",
+  "Air Minum / Galon",
+  "Gas LPG",
+  "Snack & Cemilan",
+];
+
 function HomePage() {
   // State produk list diambil dari database (API)
   const [productsList, setProductsList] = useState([]);
   const [allProducts, setAllProducts] = useState([]); // Simpan semua produk untuk filtering
   const [searchQuery, setSearchQuery] = useState("");
+  const [categoryOptions, setCategoryOptions] = useState(DEFAULT_CATEGORIES);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [categoryQuery, setCategoryQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
@@ -39,28 +56,61 @@ function HomePage() {
     fetchProducts();
   }, []);
 
+  // Fetch kategori dari API (gabungkan dengan kategori default)
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch("/api/categories");
+        if (!res.ok) {
+          throw new Error("Gagal memuat kategori");
+        }
+        const data = await res.json();
+        const names = Array.from(
+          new Set([
+            ...DEFAULT_CATEGORIES,
+            ...(data || []).map((cat) => cat.name).filter(Boolean),
+          ])
+        );
+        setCategoryOptions(names);
+      } catch (error) {
+        console.error("Error fetch kategori:", error);
+        setCategoryOptions(DEFAULT_CATEGORIES);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   // Filter produk berdasarkan search query
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      // Jika search kosong, tampilkan semua produk
+    const query = searchQuery.toLowerCase().trim();
+    const categoryFilter = selectedCategory.toLowerCase().trim();
+    const categorySearch = categoryQuery.toLowerCase().trim();
+    if (!query && !categoryFilter && !categorySearch) {
+      // Jika tidak ada filter, tampilkan semua produk
       setProductsList(allProducts);
       return;
     }
 
-    // Filter produk berdasarkan nama, deskripsi, atau store
-    const query = searchQuery.toLowerCase().trim();
     const filtered = allProducts.filter((product) => {
       const nameMatch = product.name?.toLowerCase().includes(query);
       const descMatch = (product.description || product.desc || "")
         .toLowerCase()
         .includes(query);
       const storeMatch = (product.store || "").toLowerCase().includes(query);
+      const categoryText = (product.category || "").toLowerCase();
+      const selectedMatch = categoryFilter
+        ? categoryText.includes(categoryFilter)
+        : true;
+      const customCategoryMatch = categorySearch
+        ? categoryText.includes(categorySearch)
+        : true;
       
-      return nameMatch || descMatch || storeMatch;
+      const baseMatch = query ? nameMatch || descMatch || storeMatch : true;
+      return baseMatch && selectedMatch && customCategoryMatch;
     });
 
     setProductsList(filtered);
-  }, [searchQuery, allProducts]);
+  }, [searchQuery, allProducts, selectedCategory, categoryQuery]);
 
   // Helper functions for price parsing/formatting
   const parsePrice = (priceStr) => {
@@ -156,10 +206,85 @@ function HomePage() {
         <TopNavbar 
           searchQuery={searchQuery}
           onSearchChange={(e) => setSearchQuery(e.target.value)}
+          selectedCategory={selectedCategory}
+          categoryQuery={categoryQuery}
+          categoryOptions={categoryOptions}
+          onCategorySelect={(value) =>
+            setSelectedCategory((prev) => (prev === value ? "" : value))
+          }
+          onCategoryQueryChange={(value) => setCategoryQuery(value)}
+          onResetFilter={() => {
+            setSelectedCategory("");
+            setCategoryQuery("");
+            setSearchQuery("");
+            setProductsList(allProducts);
+          }}
         />
       </div>
+      {/* Filter Kategori */}
+      <div className="max-w-7xl mx-auto px-2 md:px-4 mt-4">
+        <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 md:p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm md:text-base font-semibold text-gray-800">
+              Pilih kategori atau cari sendiri
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCategory("");
+                setCategoryQuery("");
+                setProductsList(allProducts);
+              }}
+              className="text-sm font-semibold text-orange-600 hover:text-orange-700"
+            >
+              Reset kategori
+            </button>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {categoryOptions.slice(0, 12).map((cat) => {
+              const isActive = selectedCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() =>
+                    setSelectedCategory((prev) => (prev === cat ? "" : cat))
+                  }
+                  className={`px-3 py-1.5 rounded-full text-sm border transition ${
+                    isActive
+                      ? "bg-orange-500 text-white border-orange-500"
+                      : "bg-white text-gray-700 border-orange-200 hover:border-orange-400"
+                  }`}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3 items-center">
+            <div className="flex-1 min-w-[200px]">
+              <input
+                type="text"
+                list="category-search-list"
+                value={categoryQuery}
+                onChange={(e) => setCategoryQuery(e.target.value)}
+                className="w-full px-4 py-2 border border-orange-200 rounded-full focus:outline-none focus:border-orange-500 transition"
+                placeholder="Cari kategori lain (misal: rempah, sayur)..."
+              />
+              <datalist id="category-search-list">
+                {categoryOptions.map((cat) => (
+                  <option key={cat} value={cat}></option>
+                ))}
+              </datalist>
+              <p className="text-xs text-gray-600 mt-1">
+                Jika kategori belum ada di pilihan, ketik saja — kami akan cari yang cocok.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
       {/* Produk grid */}
-      <div className="max-w-7xl mx-auto px-2 md:px-4">
+      <div className="max-w-7xl mx-auto px-2 md:px-4 mt-20">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-7">
           {productsList.length === 0 && (
             <div className="col-span-full text-center text-gray-400 py-10">

@@ -39,6 +39,7 @@ Route::get('/index', [AuthPagesController::class, 'index'])->name('index');
 
 // API Routes untuk produk (public access)
 Route::get('/api/products', [ProductController::class, 'apiIndex'])->name('api.products');
+Route::get('/api/categories', [ProductController::class, 'apiCategories'])->name('api.categories');
 
 // API Routes untuk cart (requires authentication)
 Route::middleware(['auth'])->prefix('api')->name('api.')->group(function () {
@@ -128,6 +129,8 @@ Route::middleware(['auth'])->prefix('api')->name('api.')->group(function () {
     
     // Cancel order API
     Route::patch('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+    // Complete order API (buyer marks shipped -> done)
+    Route::patch('/orders/{order}/complete', [OrderController::class, 'complete'])->name('orders.complete');
 });
 
 // Owner routes (pemilik toko)

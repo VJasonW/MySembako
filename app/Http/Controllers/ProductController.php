@@ -3,12 +3,67 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
+    /**
+     * Kumpulan kategori dasar yang umum untuk sembako.
+     */
+    private function defaultCategoryNames(): array
+    {
+        return [
+            'Beras',
+            'Minyak Goreng',
+            'Gula Pasir',
+            'Telur',
+            'Bumbu Dapur',
+            'Mie & Pasta',
+            'Kopi & Teh',
+            'Susu & Olahan',
+            'Air Minum / Galon',
+            'Gas LPG',
+            'Snack & Cemilan',
+        ];
+    }
+
+    /**
+     * Pastikan kategori dasar tersedia di database dan kembalikan daftar kategori.
+     */
+    private function ensureDefaultCategories()
+    {
+        foreach ($this->defaultCategoryNames() as $name) {
+            Category::firstOrCreate(
+                ['slug' => Str::slug($name)],
+                ['name' => $name]
+            );
+        }
+
+        return Category::orderBy('name')->get();
+    }
+
+    /**
+     * Dapatkan atau buat kategori berdasarkan nama, mengembalikan category_id.
+     */
+    private function resolveCategoryId(?string $categoryName): ?int
+    {
+        $name = trim($categoryName ?? '');
+        if ($name === '') {
+            return null;
+        }
+
+        $category = Category::firstOrCreate(
+            ['slug' => Str::slug($name)],
+            ['name' => $name]
+        );
+
+        return $category->id;
+    }
+
     public function index()
     {
         // Admin hanya melihat produknya sendiri
@@ -19,7 +74,9 @@ class ProductController extends Controller
 
     public function create()
     {
-        return view('products.create');
+        $categories = $this->ensureDefaultCategories();
+
+        return view('products.create', compact('categories'));
     }
 
     public function store(Request $request)
@@ -36,6 +93,8 @@ class ProductController extends Controller
         // Get or create category ID logic if necessary; for now, we'll just use 'category_id' as NULL if not implemented
         // You may retrieve category_id based on the given category name, or expect category_id to be provided directly.
 
+        $categoryId = $this->resolveCategoryId($request->kategori);
+
         $data = [
             'owner_id'    => Auth::id(),
             'name'        => $request->nama_produk,
@@ -43,7 +102,7 @@ class ProductController extends Controller
             'stock'       => $request->stok,
             'description' => $request->deskripsi,
             'status'      => 'aktif',
-            'category_id' => null, // Implement proper category logic as needed
+            'category_id' => $categoryId,
         ];
 
         // Simple example: if you pass category_id directly
@@ -68,7 +127,9 @@ class ProductController extends Controller
             abort(403);
         }
 
-        return view('products.edit', compact('product'));
+        $categories = $this->ensureDefaultCategories();
+
+        return view('products.edit', compact('product', 'categories'));
     }
 
     public function update(Request $request, Product $product)
@@ -86,12 +147,15 @@ class ProductController extends Controller
             'foto'        => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
+        $categoryId = $this->resolveCategoryId($request->kategori);
+
         $data = [
             'name'        => $request->nama_produk,
             'price'       => $request->harga,
             'stock'       => $request->stok,
             'description' => $request->deskripsi,
             // 'category_id' => $request->category_id, // Set if you have category logic
+            'category_id' => $categoryId,
             'status'      => $product->status ?? 'aktif',
         ];
 
@@ -153,7 +217,7 @@ class ProductController extends Controller
         // Ambil produk dengan status aktif dan stok > 0
         $products = Product::where('status', 'aktif')
             ->where('stock', '>', 0)
-            ->with('owner')
+            ->with(['owner', 'category'])
             ->get()
             ->map(function ($product) {
                 // Format gambar - jika ada image, gunakan full URL, jika tidak gunakan placeholder
@@ -169,9 +233,26 @@ class ProductController extends Controller
                     'store' => $product->owner->name ?? 'Unknown Store',
                     'description' => $product->description ?? '',
                     'stock' => $product->stock,
+                    'category' => $product->category->name ?? null,
+                    'category_id' => $product->category_id,
                 ];
             });
 
         return response()->json($products);
+    }
+
+    /**
+     * API endpoint untuk daftar kategori (termasuk default bawaan).
+     */
+    public function apiCategories()
+    {
+        $categories = $this->ensureDefaultCategories()->map(function ($category) {
+            return [
+                'id' => $category->id,
+                'name' => $category->name,
+            ];
+        });
+
+        return response()->json($categories);
     }
 }

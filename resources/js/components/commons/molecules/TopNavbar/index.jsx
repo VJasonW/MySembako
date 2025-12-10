@@ -11,6 +11,12 @@ import { useLocation, useNavigate } from "react-router-dom";
  * - onShowFilter
  * - searchQuery
  * - onSearchChange
+ * - selectedCategory
+ * - categoryQuery
+ * - categoryOptions
+ * - onCategorySelect
+ * - onCategoryQueryChange
+ * - onResetFilter
  */
 const TopNavbar = ({
   userName: userNameProp = "Pengguna",
@@ -18,6 +24,12 @@ const TopNavbar = ({
   onShowFilter = () => {},
   searchQuery = "",
   onSearchChange = () => {},
+  selectedCategory = "",
+  categoryQuery = "",
+  categoryOptions = [],
+  onCategorySelect = () => {},
+  onCategoryQueryChange = () => {},
+  onResetFilter = () => {},
 }) => {
   // Hooks
   const location = useLocation();
@@ -576,27 +588,67 @@ const TopNavbar = ({
 
             <div className="mb-5">
               <label className="block mb-2 text-[#333] text-sm font-medium">
-                Filter Kota
+                Filter Kategori
               </label>
-              <div className="flex flex-col gap-2">
-                {["Jakarta", "Semarang", "Surabaya", "Jogja"].map((city) => (
-                  <label key={city} className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" />
-                    <span>{city}</span>
-                  </label>
-                ))}
+              <div className="flex flex-wrap gap-2 mb-3">
+                {categoryOptions.slice(0, 10).map((cat) => {
+                  const isActive = selectedCategory === cat;
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() =>
+                        typeof onCategorySelect === "function" &&
+                        onCategorySelect(cat)
+                      }
+                      className={`px-3 py-1.5 rounded-full text-sm border transition ${
+                        isActive
+                          ? "bg-orange-500 text-white border-orange-500"
+                          : "bg-white text-gray-700 border-orange-200 hover:border-orange-400"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  );
+                })}
               </div>
+              <input
+                type="text"
+                list="topnav-category-list"
+                value={categoryQuery}
+                onChange={(e) =>
+                  typeof onCategoryQueryChange === "function" &&
+                  onCategoryQueryChange(e.target.value)
+                }
+                className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none"
+                placeholder="Cari kategori lain atau ketik sendiri"
+              />
+              <datalist id="topnav-category-list">
+                {categoryOptions.map((cat) => (
+                  <option key={cat} value={cat}></option>
+                ))}
+              </datalist>
+              <p className="text-xs text-gray-500 mt-2">
+                Pilih kategori populer atau ketik kategori lain jika tidak ada di daftar.
+              </p>
             </div>
 
             <div className="flex gap-3">
               <button
-                onClick={handleCloseFilter}
+                onClick={() => {
+                  handleCloseFilter();
+                }}
                 className="flex-1 p-3 bg-[#E65100] text-white border-none rounded-lg text-base font-bold cursor-pointer"
               >
                 Terapkan
               </button>
               <button
-                onClick={handleCloseFilter}
+                onClick={() => {
+                  if (typeof onResetFilter === "function") {
+                    onResetFilter();
+                  }
+                  handleCloseFilter();
+                }}
                 className="flex-1 p-3 bg-transparent text-[#E65100] border border-[#E65100] rounded-lg text-base font-bold cursor-pointer"
               >
                 Reset

@@ -169,6 +169,39 @@ function ReceiptPage() {
     }
   };
 
+  // Handle mark order as done from shipped state
+  const handleCompleteOrder = async (orderId) => {
+    if (!confirm("Tandai pesanan ini selesai?")) {
+      return;
+    }
+
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+      const response = await fetch(`/api/orders/${orderId}/complete`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-TOKEN": csrfToken || "",
+          "Accept": "application/json",
+        },
+        credentials: "same-origin",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.message || "Gagal menyelesaikan pesanan");
+        return;
+      }
+
+      await fetchOrders();
+      alert("Pesanan ditandai selesai");
+    } catch (error) {
+      console.error("Error completing order:", error);
+      alert("Terjadi kesalahan saat menyelesaikan pesanan");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#fff5f0] flex flex-col">
       <TopNavbar />
@@ -299,6 +332,17 @@ function ReceiptPage() {
                           className="w-full px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors"
                         >
                           Batalkan Pesanan
+                        </button>
+                      </div>
+                    )}
+
+                    {receipt.status === "shipped" && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <button
+                          onClick={() => handleCompleteOrder(receipt.id)}
+                          className="w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-colors"
+                        >
+                          Tandai Selesai
                         </button>
                       </div>
                     )}
