@@ -28,9 +28,14 @@ const TopNavbar = ({
   const [userPressed, setUserPressed] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
-  const [userName, setUserName] = useState(() =>
-    localStorage.getItem("userName") || userNameProp
-  );
+  const [userName, setUserName] = useState(userNameProp);
+  const [userData, setUserData] = useState({
+    name: userNameProp,
+    email: "",
+    phone: "",
+    location: "",
+    role_id: null,
+  });
   // Ukuran tombol medium: di-set ke 40px (icon medium) baik mobile maupun desktop
   const [buttonSize, setButtonSize] = useState(40);
 
@@ -46,9 +51,33 @@ const TopNavbar = ({
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // Effect: Sinkronisasi userName dgn props jika localStorage kosong
+  // Fetch profil pengguna dari session (API)
   useEffect(() => {
-    if (!localStorage.getItem("userName")) setUserName(userNameProp);
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("/api/user", {
+          method: "GET",
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setUserData({
+            name: data.name || "Pengguna",
+            email: data.email || "",
+            phone: data.phone || "",
+            location: data.location || "",
+            role_id: data.role_id || null,
+          });
+          setUserName(data.name || "Pengguna");
+        }
+      } catch (error) {
+        console.error("Gagal mengambil profil user:", error);
+      }
+    };
+
+    fetchUser();
   }, [userNameProp]);
 
   // Handler: Navigasi Logo
@@ -77,20 +106,6 @@ const TopNavbar = ({
       onShowFilter();
     }
   }, [onShowFilter, currentPath]);
-
-  const handleSimpan = () => {
-    localStorage.setItem("userName", userName);
-    if (localStorage.getItem("loggedInUsername")) {
-      localStorage.setItem("loggedInUsername", userName);
-    }
-    setShowProfile(false);
-  };
-
-  const handleReset = () => {
-    localStorage.removeItem("userName");
-    setUserName("Pengguna");
-    setShowProfile(false);
-  };
 
   const handleCloseProfile = useCallback(() => setShowProfile(false), []);
   const handleCloseFilter = useCallback(() => setShowFilter(false), []);
@@ -312,37 +327,63 @@ const TopNavbar = ({
                 </svg>
               </div>
               <h3 className="text-[#333] m-0 mb-2 text-lg font-semibold">
-                {userName}
+                {userData.name || "Pengguna"}
               </h3>
               <p className="text-[#999] m-0 text-sm">Anggota MySembako</p>
             </div>
 
-            <div className="mb-4">
-              <label className="block mb-2 text-[#333] text-sm font-medium">
-                Nama
-              </label>
-              <input
-                type="text"
-                value={userName}
-                onChange={e => setUserName(e.target.value)}
-                className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none"
-                placeholder="Masukkan nama Anda"
-              />
+            <div className="mb-4 space-y-4">
+              <div>
+                <label className="block mb-2 text-[#333] text-sm font-medium">
+                  Nama
+                </label>
+                <input
+                  type="text"
+                  value={userData.name || ""}
+                  readOnly
+                  className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none bg-gray-50"
+                  placeholder="Nama tidak tersedia"
+                />
+              </div>
+              <div>
+                <label className="block mb-2 text-[#333] text-sm font-medium">
+                  Email
+                </label>
+                <input
+                  type="text"
+                  value={userData.email || ""}
+                  readOnly
+                  className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none bg-gray-50"
+                  placeholder="Email tidak tersedia"
+                />
+              </div>
+              <div>
+                <label className="block mb-2 text-[#333] text-sm font-medium">
+                  Nomor Telepon
+                </label>
+                <input
+                  type="text"
+                  value={userData.phone || ""}
+                  readOnly
+                  className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none bg-gray-50"
+                  placeholder="Telepon tidak tersedia"
+                />
+              </div>
+              <div>
+                <label className="block mb-2 text-[#333] text-sm font-medium">
+                  Kota
+                </label>
+                <input
+                  type="text"
+                  value={userData.location || ""}
+                  readOnly
+                  className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none bg-gray-50"
+                  placeholder="Kota tidak tersedia"
+                />
+              </div>
             </div>
 
             <div className="flex flex-col gap-3">
-              <button
-                onClick={handleSimpan}
-                className="w-full p-3 bg-[#E65100] text-white border-none rounded-lg text-base font-bold cursor-pointer"
-              >
-                Simpan Perubahan
-              </button>
-              <button
-                onClick={handleReset}
-                className="w-full p-3 bg-transparent text-[#E65100] border border-[#E65100] rounded-lg text-base font-bold cursor-pointer"
-              >
-                Reset
-              </button>
               <button
                 onClick={handleLogout}
                 className="w-full p-3 bg-red-500 hover:bg-red-600 text-white border-none rounded-lg text-base font-bold cursor-pointer mt-2 transition"
@@ -392,25 +433,15 @@ const TopNavbar = ({
 
             <div className="mb-5">
               <label className="block mb-2 text-[#333] text-sm font-medium">
-                Filter Toko
+                Filter Kota
               </label>
               <div className="flex flex-col gap-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" />
-                  <span>Semua Toko</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" />
-                  <span>Toko SumberM</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" />
-                  <span>Toko T11</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" />
-                  <span>Toko Maju M</span>
-                </label>
+                {["Jakarta", "Semarang", "Surabaya", "Jogja"].map((city) => (
+                  <label key={city} className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" />
+                    <span>{city}</span>
+                  </label>
+                ))}
               </div>
             </div>
 

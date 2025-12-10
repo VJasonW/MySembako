@@ -59,6 +59,8 @@ Route::middleware(['auth'])->prefix('api')->name('api.')->group(function () {
             'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone,
+            'location' => $user->location,
+            'role_id' => $user->role_id,
         ]);
     })->name('user');
     
