@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import TopNavbar from "../../components/commons/molecules/TopNavbar";
 import BottomNavbar from "../../components/commons/molecules/BottomNavbar";
 import { requestUserLocation } from "../../utils/location";
@@ -11,6 +11,9 @@ const LocationPage = () => {
   const [showLocationPopup, setShowLocationPopup] = useState(false);
   const [locationData, setLocationData] = useState(null);
   const [address, setAddress] = useState("");
+  const [userCity, setUserCity] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [savingLocation, setSavingLocation] = useState(false);
 
   // Reverse geocoding untuk mendapatkan alamat dari koordinat
   const getAddressFromCoordinates = async (lat, lng) => {
@@ -29,27 +32,95 @@ const LocationPage = () => {
     }
   };
 
-  const handleTurnOnLocation = async () => {
-    if (navigator.geolocation) {
+  // Pemetaan koordinat kasar ke kota yang didukung
+  const cityFromCoords = (lat, lng) => {
+    const boxes = [
+      { name: "Jakarta", lat: [-6.4, -6.0], lng: [106.6, 107.0] },
+      { name: "Semarang", lat: [-7.1, -6.8], lng: [110.3, 110.6] },
+      { name: "Surabaya", lat: [-7.4, -7.1], lng: [112.6, 112.9] },
+      { name: "Jogja", lat: [-7.9, -7.6], lng: [110.3, 110.6] },
+    ];
+    const match = boxes.find(
+      (b) => lat >= b.lat[0] && lat <= b.lat[1] && lng >= b.lng[0] && lng <= b.lng[1]
+    );
+    return match ? match.name : null;
+  };
+
+  // Ambil data user untuk cek kota tersimpan
+  useEffect(() => {
+    const fetchUser = async () => {
       try {
-        const location = await requestUserLocation();
-        setLocationData(location);
-        
-        // Coba dapatkan alamat dari koordinat
-        const addr = await getAddressFromCoordinates(
-          location.latitude,
-          location.longitude
-        );
-        if (addr) {
-          setAddress(addr);
+        const res = await fetch("/api/user", {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          credentials: "same-origin",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUserCity(data.location || "");
         }
-        
-        setShowLocationPopup(true);
-      } catch (error) {
-        alert(error.message || "Location permission denied or unavailable.");
+      } catch (err) {
+        console.error("Gagal memuat user:", err);
+      } finally {
+        setLoading(false);
       }
-    } else {
+    };
+    fetchUser();
+  }, []);
+
+  const saveCityToBackend = async (city) => {
+    const csrfToken = document
+      .querySelector('meta[name="csrf-token"]')
+      ?.getAttribute("content");
+    const res = await fetch("/api/user", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-TOKEN": csrfToken || "",
+        Accept: "application/json",
+      },
+      credentials: "same-origin",
+      body: JSON.stringify({ location: city }),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.message || "Gagal menyimpan lokasi");
+    }
+    const data = await res.json();
+    setUserCity(data.location || city);
+    return data;
+  };
+
+  const handleTurnOnLocation = async () => {
+    if (!navigator.geolocation) {
       alert("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    try {
+      setSavingLocation(true);
+      const location = await requestUserLocation();
+      setLocationData(location);
+
+      const city = cityFromCoords(location.latitude, location.longitude);
+      if (city) {
+        await saveCityToBackend(city);
+      }
+
+      // Coba dapatkan alamat dari koordinat
+      const addr = await getAddressFromCoordinates(
+        location.latitude,
+        location.longitude
+      );
+      if (addr) {
+        setAddress(addr);
+      }
+
+      setShowLocationPopup(true);
+    } catch (error) {
+      alert(error.message || "Location permission denied or unavailable.");
+    } finally {
+      setSavingLocation(false);
     }
   };
 
@@ -73,6 +144,25 @@ const LocationPage = () => {
     >
       {/* Top Navbar */}
       <TopNavbar />
+
+      {/* Kota di kanan atas bila sudah tersimpan */}
+      {!loading && userCity && (
+        <div style={{ position: "absolute", top: 70, right: 16, zIndex: 10 }}>
+          <div
+            style={{
+              background: "#FFE5D0",
+              color: "#BF4413",
+              padding: "8px 14px",
+              borderRadius: "999px",
+              fontWeight: 600,
+              fontSize: 14,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+            }}
+          >
+            {userCity}
+          </div>
+        </div>
+      )}
 
       {/* Konten utama */}
       <div
@@ -99,73 +189,136 @@ const LocationPage = () => {
           />
         </div>
 
-        {/* Judul */}
-        <div
-          style={{
-            fontWeight: 700,
-            fontSize: "1.17rem",
-            textAlign: "center",
-            marginBottom: 8,
-            color: "#181818",
-          }}
-        >
-          Allow Your Location
-        </div>
+        {/* Jika belum ada kota tersimpan */}
+        {!userCity && !loading && (
+          <>
+            {/* Judul */}
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: "1.17rem",
+                textAlign: "center",
+                marginBottom: 8,
+                color: "#181818",
+              }}
+            >
+              Allow Your Location
+            </div>
 
-        {/* Deskripsi */}
-        <div
-          style={{
-            textAlign: "center",
-            fontSize: 15,
-            color: "#222222",
-            marginBottom: 26,
-            maxWidth: 290,
-            lineHeight: "20px",
-          }}
-        >
-          We'll use your location to recommend
-          <br />
-          nearest shops around you
-        </div>
+            {/* Deskripsi */}
+            <div
+              style={{
+                textAlign: "center",
+                fontSize: 15,
+                color: "#222222",
+                marginBottom: 26,
+                maxWidth: 290,
+                lineHeight: "20px",
+              }}
+            >
+              We'll use your location to recommend
+              <br />
+              nearest shops around you
+            </div>
 
-        {/* Tombol aktifkan lokasi */}
-        <button
-          style={{
-            display: "block",
-            background: "#BF4413",
-            color: "#fff",
-            border: "none",
-            borderRadius: 24,
-            padding: "11px 32px",
-            fontSize: 15,
-            fontWeight: 600,
-            cursor: "pointer",
-            margin: "0 auto 10px auto",
-            width: 200,
-            boxShadow: "0 2px 10px rgba(191, 68, 19, 0.10)"
-          }}
-          onClick={handleTurnOnLocation}
-        >
-          Turn On Location
-        </button>
+            {/* Tombol aktifkan lokasi */}
+            <button
+              style={{
+                display: "block",
+                background: "#BF4413",
+                color: "#fff",
+                border: "none",
+                borderRadius: 24,
+                padding: "11px 32px",
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: "pointer",
+                margin: "0 auto 10px auto",
+                width: 200,
+                boxShadow: "0 2px 10px rgba(191, 68, 19, 0.10)"
+              }}
+              onClick={handleTurnOnLocation}
+              disabled={savingLocation}
+            >
+              {savingLocation ? "Processing..." : "Turn On Location"}
+            </button>
 
-        {/* Maybe Later */}
-        <div
-          style={{
-            color: "#BF4413",
-            opacity: 0.7,
-            textAlign: "center",
-            fontSize: 15,
-            marginTop: 2,
-            cursor: "pointer",
-            userSelect: "none"
-          }}
-          onClick={() => {
-            window.location.href = "/home";
-          }}
-        >
-          Maybe Later
-        </div>
+            {/* Maybe Later */}
+            <div
+              style={{
+                color: "#BF4413",
+                opacity: 0.7,
+                textAlign: "center",
+                fontSize: 15,
+                marginTop: 2,
+                cursor: "pointer",
+                userSelect: "none"
+              }}
+              onClick={() => {
+                window.location.href = "/home";
+              }}
+            >
+              Maybe Later
+            </div>
+          </>
+        )}
+
+        {/* Jika sudah ada kota tersimpan */}
+        {userCity && (
+          <div style={{ textAlign: "center", maxWidth: 320 }}>
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: "1.17rem",
+                marginBottom: 8,
+                color: "#181818",
+              }}
+            >
+              Toko terdekat sesuai lokasi anda
+            </div>
+            <div style={{ color: "#444", marginBottom: 16 }}>
+              {address
+                ? address
+                : `Menampilkan rekomendasi berdasarkan kota ${userCity}`}
+            </div>
+            <div
+              style={{
+                border: "1px solid #f2f2f2",
+                borderRadius: 12,
+                padding: 16,
+                boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
+                textAlign: "left",
+                background: "#fff",
+              }}
+            >
+              <div style={{ fontWeight: 700, marginBottom: 8, color: "#BF4413" }}>
+                Rekomendasi Toko (dummy)
+              </div>
+              <ul style={{ paddingLeft: 18, margin: 0, color: "#333", lineHeight: "20px" }}>
+                <li>Toko Sembako A - 0.5 km</li>
+                <li>Toko Murah B - 0.8 km</li>
+                <li>Toko Berkah C - 1.2 km</li>
+              </ul>
+            </div>
+            <button
+              style={{
+                marginTop: 18,
+                background: "#BF4413",
+                color: "#fff",
+                border: "none",
+                borderRadius: 24,
+                padding: "11px 24px",
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: "pointer",
+                boxShadow: "0 2px 10px rgba(191, 68, 19, 0.10)"
+              }}
+              onClick={() => setShowLocationPopup(true)}
+            >
+              Lihat detail lokasi
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Bottom Navbar */}
