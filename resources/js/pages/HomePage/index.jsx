@@ -284,7 +284,7 @@ function HomePage() {
         </div>
       </div>
       {/* Produk grid */}
-      <div className="max-w-7xl mx-auto px-2 md:px-4 mt-20">
+      <div className="max-w-7xl mx-auto px-2 md:px-4 mt-10 mb-30">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-7">
           {productsList.length === 0 && (
             <div className="col-span-full text-center text-gray-400 py-10">
