@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import TopNavbar from "../../components/commons/molecules/TopNavbar";
 import BottomNavbar from "../../components/commons/molecules/BottomNavbar";
 import { requestUserLocation } from "../../utils/location";
@@ -14,6 +14,8 @@ const LocationPage = () => {
   const [userCity, setUserCity] = useState("");
   const [loading, setLoading] = useState(true);
   const [savingLocation, setSavingLocation] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
 
   // Reverse geocoding untuk mendapatkan alamat dari koordinat
   const getAddressFromCoordinates = async (lat, lng) => {
@@ -67,6 +69,52 @@ const LocationPage = () => {
     };
     fetchUser();
   }, []);
+
+  // Ambil produk seperti /home
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoadingProducts(true);
+        const res = await fetch("/api/products", {
+          headers: { Accept: "application/json" },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setProducts(Array.isArray(data) ? data : []);
+        } else {
+          setProducts([]);
+        }
+      } catch (err) {
+        console.error("Gagal memuat produk:", err);
+        setProducts([]);
+      } finally {
+        setLoadingProducts(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  const filteredProducts = useMemo(() => {
+    if (!userCity) return products;
+    const cityLower = userCity.toLowerCase();
+    const matchCity = (p) => {
+      const candidates = [
+        p.city,
+        p.location,
+        p.store_city,
+        p.storeCity,
+        p.store_location,
+        p.storeLocation,
+        p.store,
+      ]
+        .filter(Boolean)
+        .map((s) => String(s).toLowerCase());
+      return candidates.some((c) => c.includes(cityLower));
+    };
+    const result = products.filter((p) => matchCity(p));
+    return result.length ? result : products;
+  }, [products, userCity]);
 
   const saveCityToBackend = async (city) => {
     const csrfToken = document
@@ -265,7 +313,7 @@ const LocationPage = () => {
 
         {/* Jika sudah ada kota tersimpan */}
         {userCity && (
-          <div style={{ textAlign: "center", maxWidth: 320 }}>
+          <div style={{ textAlign: "center", maxWidth: 900, width: "100%" }}>
             <div
               style={{
                 fontWeight: 700,
@@ -281,42 +329,74 @@ const LocationPage = () => {
                 ? address
                 : `Menampilkan rekomendasi berdasarkan kota ${userCity}`}
             </div>
-            <div
-              style={{
-                border: "1px solid #f2f2f2",
-                borderRadius: 12,
-                padding: 16,
-                boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
-                textAlign: "left",
-                background: "#fff",
-              }}
-            >
-              <div style={{ fontWeight: 700, marginBottom: 8, color: "#BF4413" }}>
-                Rekomendasi Toko (dummy)
-              </div>
-              <ul style={{ paddingLeft: 18, margin: 0, color: "#333", lineHeight: "20px" }}>
-                <li>Toko Sembako A - 0.5 km</li>
-                <li>Toko Murah B - 0.8 km</li>
-                <li>Toko Berkah C - 1.2 km</li>
-              </ul>
+            {/* Grid produk mirip /home */}
+            <div className="max-w-7xl mx-auto px-2 md:px-4 w-full">
+              {loadingProducts ? (
+                <div style={{ padding: 20, textAlign: "center", color: "#888" }}>
+                  Memuat produk...
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-7">
+                  {filteredProducts.length === 0 && (
+                    <div className="col-span-full text-center text-gray-400 py-10">
+                      Tidak ada produk ditemukan untuk kota {userCity}
+                    </div>
+                  )}
+                  {filteredProducts.map((product, idx) => (
+                    <div
+                      key={product.id || idx}
+                      className="flex flex-col h-full bg-white border border-gray-200 rounded-2xl shadow-sm px-3.5 py-4 md:px-4 md:py-5 mb-3"
+                    >
+                      <div className="flex justify-center items-start mb-3 min-h-[85px] md:min-h-[110px]">
+                        <img
+                          src={product.img || product.image || product.foto || "/icon/Logo_Mysembako.svg"}
+                          alt={product.name || product.nama_produk}
+                          className="h-[70px] md:h-[90px] object-contain"
+                        />
+                      </div>
+                      <div className="flex-grow flex flex-col justify-between">
+                        <div className="line-clamp-2 font-semibold text-gray-900 text-xs md:text-base leading-snug mb-1 md:mb-1.5 truncate">
+                          {product.name || product.nama_produk}
+                        </div>
+                        <div className="text-sm md:text-lg font-bold text-gray-900 mb-1 md:mb-2">
+                          {product.price
+                            ? `Rp ${Number(product.price)
+                                .toString()
+                                .replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`
+                            : product.harga
+                              ? `Rp ${Number(product.harga)
+                                  .toString()
+                                  .replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`
+                              : "-"}
+                        </div>
+                      </div>
+                      <div className="text-xs md:text-sm text-gray-400 leading-tight truncate">
+                        {product.store || product.toko || userCity}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <button
-              style={{
-                marginTop: 18,
-                background: "#BF4413",
-                color: "#fff",
-                border: "none",
-                borderRadius: 24,
-                padding: "11px 24px",
-                fontSize: 15,
-                fontWeight: 600,
-                cursor: "pointer",
-                boxShadow: "0 2px 10px rgba(191, 68, 19, 0.10)"
-              }}
-              onClick={() => setShowLocationPopup(true)}
-            >
-              Lihat detail lokasi
-            </button>
+
+            <div style={{ marginTop: 18 }}>
+              <button
+                style={{
+                  background: "#BF4413",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 24,
+                  padding: "11px 24px",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  boxShadow: "0 2px 10px rgba(191, 68, 19, 0.10)"
+                }}
+                onClick={() => setShowLocationPopup(true)}
+              >
+                Lihat detail lokasi
+              </button>
+            </div>
           </div>
         )}
       </div>
