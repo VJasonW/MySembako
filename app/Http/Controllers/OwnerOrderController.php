@@ -12,7 +12,7 @@ class OwnerOrderController extends Controller
     /**
      * Get orders for products owned by the authenticated owner
      */
-    public function index()
+    public function index(Request $request)
     {
         $owner = Auth::user();
         
@@ -20,17 +20,27 @@ class OwnerOrderController extends Controller
             abort(403, 'Unauthorized access');
         }
 
+        // Get filter status from request (default: 'all')
+        $status = $request->get('status', 'all');
+
         // Get product IDs owned by this owner
         $productIds = Product::where('owner_id', $owner->id)->pluck('id');
 
-        // Get orders that contain products owned by this owner
-        $orders = Order::with(['buyer', 'items.product'])
+        // Base query for orders that contain products owned by this owner
+        $query = Order::with(['buyer', 'items.product'])
             ->whereHas('items', function ($query) use ($productIds) {
                 $query->whereIn('product_id', $productIds);
-            })
-            ->latest()
-            ->get()
-            ->map(function ($order) use ($productIds) {
+            });
+
+        // Filter by status if not 'all'
+        if ($status !== 'all' && in_array($status, ['pending', 'paid', 'cancel'])) {
+            $query->where('status', $status);
+        }
+
+        // Get orders with pagination (15 per page)
+        $orders = $query->latest()
+            ->paginate(15)
+            ->through(function ($order) use ($productIds) {
                 // Filter items to only show products owned by this owner
                 $order->items = $order->items->filter(function ($item) use ($productIds) {
                     return $productIds->contains($item->product_id);
@@ -44,7 +54,7 @@ class OwnerOrderController extends Controller
                 return $order;
             });
 
-        return view('owner.orders.index', compact('orders'));
+        return view('owner.orders.index', compact('orders', 'status'));
     }
 
     /**

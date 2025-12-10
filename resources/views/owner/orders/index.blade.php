@@ -53,6 +53,28 @@
             </div>
         @endif
 
+        <!-- Status Filter Tabs -->
+        <div class="mb-6 bg-white rounded-xl shadow-sm p-4">
+            <div class="flex gap-2 flex-wrap">
+                <a href="{{ route('owner.orders.index', ['status' => 'all']) }}" 
+                   class="px-4 py-2 rounded-lg font-semibold text-sm transition-colors {{ $status === 'all' ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}">
+                    Semua
+                </a>
+                <a href="{{ route('owner.orders.index', ['status' => 'pending']) }}" 
+                   class="px-4 py-2 rounded-lg font-semibold text-sm transition-colors {{ $status === 'pending' ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}">
+                    Pending
+                </a>
+                <a href="{{ route('owner.orders.index', ['status' => 'paid']) }}" 
+                   class="px-4 py-2 rounded-lg font-semibold text-sm transition-colors {{ $status === 'paid' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}">
+                    Paid
+                </a>
+                <a href="{{ route('owner.orders.index', ['status' => 'cancel']) }}" 
+                   class="px-4 py-2 rounded-lg font-semibold text-sm transition-colors {{ $status === 'cancel' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}">
+                    Cancel
+                </a>
+            </div>
+        </div>
+
         <!-- Orders Table -->
         <div class="bg-white rounded-xl shadow-sm overflow-hidden">
             @if($orders->count() > 0)
@@ -107,13 +129,37 @@
                         </tbody>
                     </table>
                 </div>
+                
+                <!-- Pagination -->
+                <div class="px-6 py-4 border-t border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-700">
+                            Menampilkan 
+                            <span class="font-semibold">{{ $orders->firstItem() }}</span>
+                            sampai
+                            <span class="font-semibold">{{ $orders->lastItem() }}</span>
+                            dari
+                            <span class="font-semibold">{{ $orders->total() }}</span>
+                            pesanan
+                        </div>
+                        <div class="flex gap-2">
+                            {{ $orders->appends(request()->query())->links() }}
+                        </div>
+                    </div>
+                </div>
             @else
                 <div class="text-center py-16">
                     <svg class="mx-auto h-20 w-20 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                     </svg>
                     <h3 class="text-lg font-semibold text-gray-700 mb-2">Belum ada pesanan</h3>
-                    <p class="text-gray-500">Pesanan untuk produk Anda akan muncul di sini</p>
+                    <p class="text-gray-500">
+                        @if($status !== 'all')
+                            Tidak ada pesanan dengan status {{ ucfirst($status) }}
+                        @else
+                            Pesanan untuk produk Anda akan muncul di sini
+                        @endif
+                    </p>
                 </div>
             @endif
         </div>
