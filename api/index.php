@@ -56,6 +56,48 @@ putenv('CACHE_STORE=array');
 $_ENV['CACHE_STORE'] = 'array';
 $_SERVER['CACHE_STORE'] = 'array';
 
+// Enable debug and fallback APP_KEY
+putenv('APP_DEBUG=true');
+$_ENV['APP_DEBUG'] = 'true';
+$_SERVER['APP_DEBUG'] = 'true';
+
+if (!getenv('APP_KEY')) {
+    putenv('APP_KEY=base64:zlnStk5Imh6tDkFvS08A8HLY6VJxXkp3XkOrYviD5hA=');
+    $_ENV['APP_KEY'] = 'base64:zlnStk5Imh6tDkFvS08A8HLY6VJxXkp3XkOrYviD5hA=';
+    $_SERVER['APP_KEY'] = 'base64:zlnStk5Imh6tDkFvS08A8HLY6VJxXkp3XkOrYviD5hA=';
+}
+
+// Fallback DB credentials if not set in Vercel environment
+if (!getenv('DB_HOST') || getenv('DB_HOST') === '127.0.0.1') {
+    putenv('DB_CONNECTION=mysql');
+    $_ENV['DB_CONNECTION'] = 'mysql';
+    $_SERVER['DB_CONNECTION'] = 'mysql';
+
+    putenv('DB_HOST=gateway01.ap-northeast-1.prod.aws.tidbcloud.com');
+    $_ENV['DB_HOST'] = 'gateway01.ap-northeast-1.prod.aws.tidbcloud.com';
+    $_SERVER['DB_HOST'] = 'gateway01.ap-northeast-1.prod.aws.tidbcloud.com';
+
+    putenv('DB_PORT=4000');
+    $_ENV['DB_PORT'] = '4000';
+    $_SERVER['DB_PORT'] = '4000';
+
+    putenv('DB_DATABASE=mysembako');
+    $_ENV['DB_DATABASE'] = 'mysembako';
+    $_SERVER['DB_DATABASE'] = 'mysembako';
+
+    putenv('DB_USERNAME=3Jdt6tKbLQzJ6zp.root');
+    $_ENV['DB_USERNAME'] = '3Jdt6tKbLQzJ6zp.root';
+    $_SERVER['DB_USERNAME'] = '3Jdt6tKbLQzJ6zp.root';
+
+    putenv('DB_PASSWORD=RRpGsiI2M4FDVXMO');
+    $_ENV['DB_PASSWORD'] = 'RRpGsiI2M4FDVXMO';
+    $_SERVER['DB_PASSWORD'] = 'RRpGsiI2M4FDVXMO';
+
+    putenv('MYSQL_ATTR_SSL_CA=true');
+    $_ENV['MYSQL_ATTR_SSL_CA'] = 'true';
+    $_SERVER['MYSQL_ATTR_SSL_CA'] = 'true';
+}
+
 // Force HTTPS detection for Vercel
 $_SERVER['HTTPS'] = 'on';
 $_SERVER['SERVER_PORT'] = 443;
@@ -65,5 +107,13 @@ $_SERVER['HTTP_X_FORWARDED_PROTO'] = 'https';
 $_SERVER['SCRIPT_NAME'] = '/index.php';
 $_SERVER['PHP_SELF'] = '/index.php';
 
-// Forward request to standard Laravel public/index.php
-require __DIR__ . '/../public/index.php';
+try {
+    // Forward request to standard Laravel public/index.php
+    require __DIR__ . '/../public/index.php';
+} catch (\Throwable $e) {
+    http_response_code(500);
+    echo "<h1>Vercel Serverless Exception Details:</h1>\n";
+    echo "<p><b>Error:</b> " . htmlspecialchars($e->getMessage()) . "</p>\n";
+    echo "<p><b>File:</b> " . htmlspecialchars($e->getFile()) . ":" . $e->getLine() . "</p>\n";
+    echo "<pre>" . htmlspecialchars($e->getTraceAsString()) . "</pre>\n";
+}
