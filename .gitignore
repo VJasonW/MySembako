@@ -19,6 +19,9 @@
 /storage/*.key
 /storage/pail
 /vendor
+/.agents
+index.html
+tests/adversarial_cli_runner.php
 Homestead.json
 Homestead.yaml
 Thumbs.db

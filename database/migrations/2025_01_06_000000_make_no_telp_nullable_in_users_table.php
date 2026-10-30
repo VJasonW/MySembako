@@ -12,18 +12,22 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Use raw SQL to alter the column to be nullable
-        // This works for MySQL/MariaDB
-        DB::statement('ALTER TABLE users MODIFY COLUMN no_telp VARCHAR(255) NULL');
+        if (Schema::hasColumn('users', 'no_telp')) {
+            DB::statement('ALTER TABLE users MODIFY COLUMN no_telp VARCHAR(255) NULL');
+        } else {
+            Schema::table('users', function (Blueprint $table) {
+                $table->string('no_telp')->nullable();
+            });
+        }
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        // Revert to NOT NULL (you may want to set a default value first)
-        DB::statement('ALTER TABLE users MODIFY COLUMN no_telp VARCHAR(255) NOT NULL');
+        if (Schema::hasColumn('users', 'no_telp')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->dropColumn('no_telp');
+            });
+        }
     }
 };
 
