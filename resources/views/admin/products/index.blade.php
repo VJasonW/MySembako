@@ -38,7 +38,7 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ $product->owner->name ?? '-' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="font-semibold text-orange-500">Rp {{ number_format($product->price, 0, ',', '.') }}</div>
+                            <div class="font-semibold text-pink-600">Rp {{ number_format($product->price, 0, ',', '.') }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="font-semibold {{ $product->stock > 0 ? 'text-green-600' : 'text-red-600' }}">

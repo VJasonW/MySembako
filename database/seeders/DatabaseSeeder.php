@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
         // Seed roles first
         $this->call([
             RoleSeeder::class,
+            CategorySeeder::class,
             AdminSeeder::class,
             StoreSeeder::class,
         ]);

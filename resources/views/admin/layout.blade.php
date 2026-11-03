@@ -20,11 +20,11 @@ Color Palette yang lebih serasi & enak dilihat:
     @vite(['resources/css/app.css'])
     <style>
         :root {
-            --primary-brown: #94451D;
-            --sidebar-bg: #FFE5CB;
-            --sidebar-hover: #FFC49B;
-            --sidebar-selected: #FFB183;
-            --body-bg: #FFF8F3;
+            --primary-brown: #9D174D;
+            --sidebar-bg: #FCE7F3;
+            --sidebar-hover: #FBCFE8;
+            --sidebar-selected: #F9A8D4;
+            --body-bg: #FDF2F8;
             --success-text: #4CAF5B;
             --error-text: #F54646;
         }

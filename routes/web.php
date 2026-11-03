@@ -35,8 +35,6 @@ Route::post('/logout', function () {
     return redirect()->route('home')->with('success', 'Anda telah logout.');
 })->name('logout');
 
-Route::get('/index', [AuthPagesController::class, 'index'])->name('index');
-
 // API Routes untuk produk (public access)
 Route::get('/api/products', [ProductController::class, 'apiIndex'])->name('api.products');
 Route::get('/api/categories', [ProductController::class, 'apiCategories'])->name('api.categories');
@@ -52,9 +50,6 @@ Route::middleware(['auth'])->prefix('api')->name('api.')->group(function () {
     // User API
     Route::get('/user', function () {
         $user = Auth::user();
-        if (!$user) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,
@@ -68,9 +63,6 @@ Route::middleware(['auth'])->prefix('api')->name('api.')->group(function () {
     // Update user profile (nama, email, telepon, lokasi)
     Route::patch('/user', function (\Illuminate\Http\Request $request) {
         $user = Auth::user();
-        if (!$user) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
@@ -99,33 +91,7 @@ Route::middleware(['auth'])->prefix('api')->name('api.')->group(function () {
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout');
     
     // Orders API
-    Route::get('/orders', function () {
-        $user = Auth::user();
-        if (!$user) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
-        $orders = \App\Models\Order::where('buyer_id', $user->id)
-            ->with(['items.product'])
-            ->latest()
-            ->get()
-            ->map(function ($order) {
-                return [
-                    'id' => $order->id,
-                    'status' => $order->status,
-                    'total_price' => $order->total_price,
-                    'payment_method' => $order->payment_method,
-                    'created_at' => $order->created_at->format('d F Y'),
-                    'items' => $order->items->map(function ($item) {
-                        return [
-                            'product_name' => $item->product->name ?? 'Produk dihapus',
-                            'quantity' => $item->quantity,
-                            'price' => $item->price,
-                        ];
-                    }),
-                ];
-            });
-        return response()->json($orders);
-    })->name('orders.index');
+    Route::get('/orders', [OrderController::class, 'apiIndex'])->name('orders.index');
     
     // Cancel order API
     Route::patch('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');

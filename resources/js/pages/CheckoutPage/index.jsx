@@ -1,24 +1,52 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import BottomNavbar from "../../components/commons/molecules/BottomNavbar";
 import TopNavbar from "../../components/commons/molecules/TopNavbar";
+import { Button } from "../../components/ui/Button";
+import { Input } from "../../components/ui/Input";
+import { PriceTag } from "../../components/ui/PriceTag";
+import { Modal } from "../../components/ui/Modal";
+import { Badge } from "../../components/ui/Badge";
+import { Skeleton } from "../../components/ui/Skeleton";
+import { useToast } from "../../context/ToastContext";
+import { useAuth } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
+import { apiFetch } from "../../lib/api";
 
 function CheckoutPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Get selected items from location state or fetch from cart
-  const selectedItems = location.state?.items || [];
-  
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
+  const { fetchCart } = useCart();
+  const { showToast } = useToast();
+
+  // Retrieve selected items safely from state OR sessionStorage fallback (P0-8)
+  const [selectedItems, setSelectedItems] = useState(() => {
+    if (location.state?.items && location.state.items.length > 0) {
+      return location.state.items;
+    }
+    try {
+      const stored = sessionStorage.getItem("checkout_items");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error("Error reading stored checkout items", e);
+    }
+    return [];
+  });
+
   const [addresses, setAddresses] = useState([]);
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [showAddressForm, setShowAddressForm] = useState(false);
-  
-  // New address form state
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [savingAddress, setSavingAddress] = useState(false);
+
+  // New address state
   const [newAddress, setNewAddress] = useState({
     label: "",
     address: "",
@@ -29,174 +57,128 @@ function CheckoutPage() {
     is_default: false,
   });
 
-  // Fetch user info and addresses
+  // Guard: if no selected items, return to cart
   useEffect(() => {
     if (selectedItems.length === 0) {
-      // No items selected, redirect back to cart
-      navigate("/cart");
-      return;
+      showToast({
+        message: "Tidak ada produk yang dipilih untuk checkout.",
+        type: "warning",
+      });
+      navigate("/cart", { replace: true });
     }
+  }, [selectedItems, navigate, showToast]);
 
-    const fetchData = async () => {
+  // Fetch addresses
+  useEffect(() => {
+    const fetchAddresses = async () => {
       try {
         setLoading(true);
-        
-        // Fetch user info
-        const userResponse = await fetch("/api/user", {
-          method: "GET",
-          headers: {
-            "Accept": "application/json",
-          },
-          credentials: "same-origin",
-        });
+        const data = await apiFetch("/api/addresses");
+        setAddresses(Array.isArray(data) ? data : []);
 
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          setUser(userData);
+        const defaultAddr = data?.find((a) => a.is_default);
+        if (defaultAddr) {
+          setSelectedAddress(defaultAddr.id);
+        } else if (data?.length > 0) {
+          setSelectedAddress(data[0].id);
         }
-
-        // Fetch addresses
-        const addressResponse = await fetch("/api/addresses", {
-          method: "GET",
-          headers: {
-            "Accept": "application/json",
-          },
-          credentials: "same-origin",
-        });
-
-        if (addressResponse.ok) {
-          const addressData = await addressResponse.json();
-          setAddresses(addressData);
-          
-          // Select default address if available
-          const defaultAddr = addressData.find(addr => addr.is_default);
-          if (defaultAddr) {
-            setSelectedAddress(defaultAddr.id);
-          } else if (addressData.length > 0) {
-            setSelectedAddress(addressData[0].id);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
+      } catch (err) {
+        console.error("Error fetching addresses:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
-  }, [navigate, selectedItems]);
+    fetchAddresses();
+  }, []);
 
-  // Calculate totals
   const subtotal = selectedItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+    (sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1),
     0
   );
-  const total = subtotal;
 
-  // Handle address selection
-  const handleAddressSelect = (addressId) => {
-    setSelectedAddress(addressId);
-  };
-
-  // Handle add new address
   const handleAddAddress = async (e) => {
     e.preventDefault();
-    
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-      
-      const response = await fetch("/api/addresses", {
+      setSavingAddress(true);
+      const created = await apiFetch("/api/addresses", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-TOKEN": csrfToken || "",
-          "Accept": "application/json",
-        },
-        credentials: "same-origin",
-        body: JSON.stringify(newAddress),
+        body: newAddress,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Refresh addresses
-        const addressResponse = await fetch("/api/addresses", {
-          headers: { "Accept": "application/json" },
-          credentials: "same-origin",
-        });
-        const addressData = await addressResponse.json();
-        setAddresses(addressData);
-        setSelectedAddress(data.id);
-        setShowAddressForm(false);
-        setNewAddress({
-          label: "",
-          address: "",
-          city: "",
-          province: "",
-          postal_code: "",
-          phone: "",
-          is_default: false,
-        });
-      } else {
-        const error = await response.json();
-        alert(error.message || "Gagal menambahkan alamat");
-      }
+      showToast({
+        message: "Alamat pengiriman baru berhasil disimpan!",
+        type: "success",
+      });
+
+      // Refresh addresses
+      const updatedList = await apiFetch("/api/addresses");
+      setAddresses(updatedList);
+      setSelectedAddress(created.id || updatedList[0]?.id);
+      setShowAddressModal(false);
+      setNewAddress({
+        label: "",
+        address: "",
+        city: "",
+        province: "",
+        postal_code: "",
+        phone: "",
+        is_default: false,
+      });
     } catch (error) {
-      console.error("Error adding address:", error);
-      alert("Terjadi kesalahan saat menambahkan alamat");
+      showToast({
+        message: error.message || "Gagal menambahkan alamat",
+        type: "error",
+      });
+    } finally {
+      setSavingAddress(false);
     }
   };
 
-  // Handle checkout submission
-  const handleCheckout = async () => {
+  const handleCreateOrder = async () => {
     if (!selectedAddress) {
-      alert("Pilih alamat pengiriman terlebih dahulu");
-      return;
-    }
-
-    if (!paymentMethod) {
-      alert("Pilih metode pembayaran terlebih dahulu");
+      showToast({
+        message: "Pilih atau tambahkan alamat pengiriman terlebih dahulu",
+        type: "warning",
+      });
       return;
     }
 
     try {
       setSubmitting(true);
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-      
-      // Prepare order data
       const orderData = {
-        items: selectedItems.map(item => ({
-          product_id: item.product_id,
+        items: selectedItems.map((item) => ({
+          product_id: item.product_id || item.id,
           quantity: item.quantity,
           price: item.price,
         })),
         address_id: selectedAddress,
         payment_method: paymentMethod,
-        total_price: total,
+        total_price: subtotal,
       };
 
-      const response = await fetch("/api/checkout", {
+      const result = await apiFetch("/api/checkout", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-TOKEN": csrfToken || "",
-          "Accept": "application/json",
-        },
-        credentials: "same-origin",
-        body: JSON.stringify(orderData),
+        body: orderData,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        // Redirect to receipt page with order ID
-        navigate("/receipt", { state: { orderId: data.order_id, status: "pending" } });
-      } else {
-        const error = await response.json();
-        alert(error.message || "Gagal melakukan checkout");
-      }
+      // Clear persisted checkout items
+      sessionStorage.removeItem("checkout_items");
+      await fetchCart();
+
+      showToast({
+        message: "Pesanan berhasil dibuat!",
+        type: "success",
+      });
+
+      navigate("/receipt", {
+        state: { orderId: result.order_id, status: "pending" },
+      });
     } catch (error) {
-      console.error("Error during checkout:", error);
-      alert("Terjadi kesalahan saat melakukan checkout");
+      showToast({
+        message: error.message || "Gagal memproses pesanan",
+        type: "error",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -204,379 +186,387 @@ function CheckoutPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#fff6f2] flex items-center justify-center">
-        <div className="text-center text-[#c0b2a2] text-lg font-semibold">
-          Memuat data checkout...
-        </div>
+      <div className="min-h-screen bg-[#FAFAF8] flex flex-col font-sans">
+        <TopNavbar variant="minimal" />
+        <main className="max-w-4xl mx-auto w-full p-6 space-y-4">
+          <Skeleton className="h-10 w-48 rounded-xl" />
+          <Skeleton className="h-44 w-full rounded-3xl" />
+          <Skeleton className="h-44 w-full rounded-3xl" />
+        </main>
       </div>
     );
   }
 
-  const selectedAddressData = addresses.find(addr => addr.id === selectedAddress);
-
   return (
-    <div className="min-h-screen bg-[#fff6f2] flex flex-col">
-      <TopNavbar />
-      <main className="flex-1 max-w-6xl mx-auto w-full mt-4 md:mt-8 px-4 md:px-6 pb-20">
+    <div className="min-h-screen bg-[#FAFAF8] text-stone-900 flex flex-col font-sans pb-32 lg:pb-16">
+      {/* Top Navbar minimal */}
+      <TopNavbar variant="minimal" />
+
+      <main className="flex-1 max-w-5xl mx-auto w-full mt-5 md:mt-8 px-4 md:px-6">
         <div className="mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-[#934f19]">
-            Checkout
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-stone-900 tracking-tight">
+            Checkout Pembayaran
           </h1>
+          <p className="text-xs sm:text-sm text-stone-500 mt-0.5">
+            Konfirmasi alamat dan selesaikan pemesanan sembako
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Form */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 items-start">
+          {/* Left Column: Delivery Address & Payment Method */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Alamat Pengiriman */}
-            <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 border border-[#ffe1c1]">
-              <h2 className="text-xl font-bold text-[#934f19] mb-4">
-                Alamat Pengiriman
-              </h2>
-              
+            {/* Step 1: Delivery Address */}
+            <div className="bg-white rounded-3xl p-5 md:p-6 border border-stone-200/80 shadow-2xs">
+              <div className="flex items-center justify-between pb-3 mb-4 border-b border-stone-100">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-7 h-7 rounded-xl bg-pink-100 text-pink-600 font-extrabold text-xs flex items-center justify-center">
+                    1
+                  </span>
+                  <h2 className="text-base sm:text-lg font-extrabold text-stone-900">
+                    Alamat Pengiriman
+                  </h2>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAddressModal(true)}
+                  className="text-pink-600 hover:text-pink-700"
+                >
+                  + Tambah Alamat
+                </Button>
+              </div>
+
               {addresses.length === 0 ? (
-                <div className="text-center py-4">
-                  <p className="text-gray-600 mb-4">Belum ada alamat tersimpan</p>
-                  <button
-                    onClick={() => setShowAddressForm(true)}
-                    className="px-4 py-2 bg-[#fc8726] text-white rounded-lg font-semibold hover:bg-[#e16b27]"
+                <div className="text-center py-8 px-4 bg-stone-50 rounded-2xl border border-dashed border-stone-200">
+                  <p className="text-xs sm:text-sm text-stone-600 mb-3">
+                    Belum ada alamat pengiriman tersimpan
+                  </p>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setShowAddressModal(true)}
                   >
-                    Tambah Alamat
-                  </button>
+                    Tambah Alamat Sekarang
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {addresses.map((address) => (
-                    <label
-                      key={address.id}
-                      className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition ${
-                        selectedAddress === address.id
-                          ? "border-[#fc8726] bg-[#fff8f4]"
-                          : "border-[#f9e6d8] hover:border-[#fc8726]"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="address"
-                        value={address.id}
-                        checked={selectedAddress === address.id}
-                        onChange={() => handleAddressSelect(address.id)}
-                        className="mt-1 mr-3"
-                      />
-                      <div className="flex-1">
-                        {address.label && (
-                          <div className="font-semibold text-[#c96e33] mb-1">
-                            {address.label}
-                          </div>
-                        )}
-                        <div className="text-sm text-gray-700">
-                          {address.address}, {address.city}, {address.province} {address.postal_code}
-                        </div>
-                        {address.phone && (
-                          <div className="text-sm text-gray-600 mt-1">
-                            {address.phone}
-                          </div>
-                        )}
-                      </div>
-                    </label>
-                  ))}
-                  
-                  <button
-                    onClick={() => setShowAddressForm(true)}
-                    className="w-full px-4 py-3 border-2 border-dashed border-[#dbbdae] rounded-lg text-[#fc8726] font-semibold hover:bg-[#fff8f4] transition"
-                  >
-                    + Tambah Alamat Baru
-                  </button>
-                </div>
-              )}
-
-              {/* Address Form Modal */}
-              {showAddressForm && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                  <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-xl font-bold text-[#934f19]">
-                        Tambah Alamat Baru
-                      </h3>
-                      <button
-                        onClick={() => setShowAddressForm(false)}
-                        className="text-2xl text-gray-500 hover:text-gray-700"
+                  {addresses.map((address) => {
+                    const isSelected = selectedAddress === address.id;
+                    return (
+                      <label
+                        key={address.id}
+                        className={`flex items-start p-3.5 sm:p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 ${
+                          isSelected
+                            ? "border-pink-500 bg-pink-50/20 shadow-2xs"
+                            : "border-stone-200/80 bg-white hover:border-stone-300"
+                        }`}
                       >
-                        ×
-                      </button>
-                    </div>
-                    
-                    <form onSubmit={handleAddAddress} className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Label (opsional)
-                        </label>
                         <input
-                          type="text"
-                          value={newAddress.label}
-                          onChange={(e) =>
-                            setNewAddress({ ...newAddress, label: e.target.value })
-                          }
-                          placeholder="Contoh: Rumah, Kantor"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#fc8726]"
+                          type="radio"
+                          name="checkout_address"
+                          checked={isSelected}
+                          onChange={() => setSelectedAddress(address.id)}
+                          className="mt-1 mr-3 accent-pink-600 w-4 h-4 cursor-pointer"
                         />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Alamat Lengkap <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                          value={newAddress.address}
-                          onChange={(e) =>
-                            setNewAddress({ ...newAddress, address: e.target.value })
-                          }
-                          required
-                          rows="3"
-                          placeholder="Jl. Contoh No. 123"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#fc8726]"
-                        />
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            Kota <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={newAddress.city}
-                            onChange={(e) =>
-                              setNewAddress({ ...newAddress, city: e.target.value })
-                            }
-                            required
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#fc8726]"
-                          />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-extrabold text-stone-900 text-xs sm:text-sm">
+                              {address.label || "Alamat Rumah"}
+                            </span>
+                            {address.is_default && (
+                              <Badge variant="brand" size="sm">
+                                Utama
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+                            {address.address}, {address.city},{" "}
+                            {address.province} {address.postal_code}
+                          </p>
+                          {address.phone && (
+                            <p className="text-xs text-stone-500 font-medium mt-1">
+                              Penerima: {user?.name || "Pelanggan"} ({address.phone})
+                            </p>
+                          )}
                         </div>
-                        
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            Provinsi <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={newAddress.province}
-                            onChange={(e) =>
-                              setNewAddress({ ...newAddress, province: e.target.value })
-                            }
-                            required
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#fc8726]"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            Kode Pos <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={newAddress.postal_code}
-                            onChange={(e) =>
-                              setNewAddress({ ...newAddress, postal_code: e.target.value })
-                            }
-                            required
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#fc8726]"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            No. Telepon
-                          </label>
-                          <input
-                            type="text"
-                            value={newAddress.phone}
-                            onChange={(e) =>
-                              setNewAddress({ ...newAddress, phone: e.target.value })
-                            }
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#fc8726]"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="is_default"
-                          checked={newAddress.is_default}
-                          onChange={(e) =>
-                            setNewAddress({ ...newAddress, is_default: e.target.checked })
-                          }
-                          className="mr-2"
-                        />
-                        <label htmlFor="is_default" className="text-sm text-gray-700">
-                          Jadikan alamat utama
-                        </label>
-                      </div>
-                      
-                      <div className="flex gap-3 pt-4">
-                        <button
-                          type="button"
-                          onClick={() => setShowAddressForm(false)}
-                          className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-400"
-                        >
-                          Batal
-                        </button>
-                        <button
-                          type="submit"
-                          className="flex-1 px-4 py-2 bg-[#fc8726] text-white rounded-lg font-semibold hover:bg-[#e16b27]"
-                        >
-                          Simpan
-                        </button>
-                      </div>
-                    </form>
-                  </div>
+                      </label>
+                    );
+                  })}
                 </div>
               )}
             </div>
 
-            {/* Informasi Pembeli */}
-            <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 border border-[#ffe1c1]">
-              <h2 className="text-xl font-bold text-[#934f19] mb-4">
-                Informasi Pembeli
-              </h2>
-              <div className="space-y-2">
-                <div>
-                  <span className="text-sm text-gray-600">Nama:</span>
-                  <span className="ml-2 font-semibold text-gray-900">
-                    {user?.name || "-"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-600">Email:</span>
-                  <span className="ml-2 font-semibold text-gray-900">
-                    {user?.email || "-"}
-                  </span>
-                </div>
-                {user?.phone && (
-                  <div>
-                    <span className="text-sm text-gray-600">No. Telepon:</span>
-                    <span className="ml-2 font-semibold text-gray-900">
-                      {user.phone}
-                    </span>
-                  </div>
-                )}
+            {/* Step 2: Payment Method */}
+            <div className="bg-white rounded-3xl p-5 md:p-6 border border-stone-200/80 shadow-2xs">
+              <div className="flex items-center gap-2.5 pb-3 mb-4 border-b border-stone-100">
+                <span className="w-7 h-7 rounded-xl bg-pink-100 text-pink-600 font-extrabold text-xs flex items-center justify-center">
+                  2
+                </span>
+                <h2 className="text-base sm:text-lg font-extrabold text-stone-900">
+                  Metode Pembayaran
+                </h2>
               </div>
-            </div>
 
-            {/* Metode Pembayaran */}
-            <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 border border-[#ffe1c1]">
-              <h2 className="text-xl font-bold text-[#934f19] mb-4">
-                Metode Pembayaran
-              </h2>
-              <div className="space-y-3">
-                <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer transition border-[#f9e6d8] hover:border-[#fc8726]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <label
+                  className={`flex items-start p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 ${
+                    paymentMethod === "cash"
+                      ? "border-pink-500 bg-pink-50/20 shadow-2xs"
+                      : "border-stone-200/80 bg-white hover:border-stone-300"
+                  }`}
+                >
                   <input
                     type="radio"
-                    name="payment"
+                    name="checkout_payment"
                     value="cash"
                     checked={paymentMethod === "cash"}
                     onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="mr-3"
+                    className="mt-1 mr-3 accent-pink-600 w-4 h-4 cursor-pointer"
                   />
-                  <div className="flex-1">
-                    <div className="font-semibold text-gray-900">
-                      Cash on Delivery (COD)
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      Bayar saat barang diterima
-                    </div>
+                  <div>
+                    <h3 className="font-extrabold text-stone-900 text-sm">
+                      Bayar di Tempat (COD)
+                    </h3>
+                    <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">
+                      Bayar tunai langsung saat sembako tiba di rumah Anda
+                    </p>
                   </div>
                 </label>
-                
-                <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer transition border-[#f9e6d8] hover:border-[#fc8726]">
+
+                <label
+                  className={`flex items-start p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 ${
+                    paymentMethod === "transfer"
+                      ? "border-pink-500 bg-pink-50/20 shadow-2xs"
+                      : "border-stone-200/80 bg-white hover:border-stone-300"
+                  }`}
+                >
                   <input
                     type="radio"
-                    name="payment"
+                    name="checkout_payment"
                     value="transfer"
                     checked={paymentMethod === "transfer"}
                     onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="mr-3"
+                    className="mt-1 mr-3 accent-pink-600 w-4 h-4 cursor-pointer"
                   />
-                  <div className="flex-1">
-                    <div className="font-semibold text-gray-900">
-                      Transfer Bank
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      Transfer melalui bank
-                    </div>
+                  <div>
+                    <h3 className="font-extrabold text-stone-900 text-sm">
+                      Transfer Bank / QRIS
+                    </h3>
+                    <p className="text-xs text-stone-500 mt-0.5 leading-relaxed">
+                      BCA, Mandiri, BRI, BNI &amp; pembayaran instan QRIS
+                    </p>
                   </div>
                 </label>
               </div>
             </div>
           </div>
 
-          {/* Right Column - Order Summary */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6 sticky top-4 border border-[#ffe1c1]">
-              <h2 className="text-xl font-bold text-[#934f19] mb-4">
+          {/* Right Column: Order Summary (Desktop Sticky) */}
+          <aside className="lg:col-span-1 sticky top-20">
+            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-stone-200/80 shadow-xs">
+              <h3 className="font-extrabold text-stone-900 text-base mb-4 pb-3 border-b border-stone-100">
                 Ringkasan Pesanan
-              </h2>
+              </h3>
 
               {/* Items List */}
-              <div className="space-y-3 mb-4 max-h-[300px] overflow-y-auto">
+              <div className="space-y-3 mb-5 max-h-60 overflow-y-auto pr-1">
                 {selectedItems.map((item, index) => (
-                  <div key={index} className="flex items-center gap-3 pb-3 border-b border-gray-200">
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 pb-2.5 border-b border-stone-100"
+                  >
                     <img
-                      src={item.img}
-                      alt={item.name}
-                      className="w-16 h-16 object-contain rounded-lg bg-white border border-[#ffe5d2]"
+                      src={item.img || "/icon/Logo_Mysembako.svg"}
+                      alt=""
+                      className="w-12 h-12 rounded-xl bg-stone-50 border border-stone-100 p-1 object-contain shrink-0"
+                      onError={(e) => {
+                        e.currentTarget.src = "/icon/Logo_Mysembako.svg";
+                      }}
                     />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-900 text-sm truncate">
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-stone-900 text-xs truncate">
                         {item.name}
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        {item.quantity} × Rp {item.price.toLocaleString("id-ID")}
-                      </div>
+                      </h4>
+                      <p className="text-[11px] text-stone-500">
+                        {item.quantity} &times; Rp{" "}
+                        {Number(item.price).toLocaleString("id-ID")}
+                      </p>
                     </div>
-                    <div className="font-semibold text-[#e16b27] text-sm">
-                      Rp {(item.price * item.quantity).toLocaleString("id-ID")}
-                    </div>
+                    <span className="font-extrabold text-stone-900 text-xs">
+                      Rp{" "}
+                      {(
+                        Number(item.price) * Number(item.quantity)
+                      ).toLocaleString("id-ID")}
+                    </span>
                   </div>
                 ))}
               </div>
 
-              {/* Price Summary */}
-              <div className="space-y-2 mb-6 pt-4 border-t border-gray-200">
-                <div className="flex justify-between text-gray-700">
-                  <span>Subtotal:</span>
-                  <span className="font-semibold">
+              {/* Price Breakdown */}
+              <div className="space-y-2 mb-6 text-xs sm:text-sm">
+                <div className="flex justify-between text-stone-600">
+                  <span>Subtotal Produk</span>
+                  <span className="font-bold text-stone-900">
                     Rp {subtotal.toLocaleString("id-ID")}
                   </span>
                 </div>
-                <div className="flex justify-between text-lg font-bold text-[#e16b27] pt-2 border-t border-gray-200">
-                  <span>Total:</span>
-                  <span>Rp {total.toLocaleString("id-ID")}</span>
+
+                <div className="flex justify-between text-stone-600">
+                  <span>Ongkos Kirim</span>
+                  <span className="font-bold text-emerald-600">
+                    Gratis (Warung Terdekat)
+                  </span>
+                </div>
+
+                <div className="pt-3 border-t border-stone-100 flex justify-between items-baseline">
+                  <span className="font-extrabold text-stone-900 text-sm">
+                    Total Pembayaran
+                  </span>
+                  <PriceTag price={subtotal} size="lg" />
                 </div>
               </div>
 
-              {/* Checkout Button */}
-              <button
-                onClick={handleCheckout}
-                disabled={submitting || !selectedAddress}
-                className={`w-full py-3 rounded-xl font-semibold text-base shadow-sm transition ${
-                  submitting || !selectedAddress
-                    ? "bg-gray-400 text-white cursor-not-allowed"
-                    : "bg-[#fc8726] hover:bg-[#e16b27] text-white"
-                }`}
+              {/* Desktop Submit Button */}
+              <Button
+                variant="primary"
+                fullWidth
+                size="lg"
+                loading={submitting}
+                disabled={!selectedAddress}
+                onClick={handleCreateOrder}
               >
-                {submitting ? "Memproses..." : "Buat Pesanan"}
-              </button>
+                Konfirmasi &amp; Buat Pesanan
+              </Button>
             </div>
-          </div>
+          </aside>
         </div>
       </main>
-      <BottomNavbar />
+
+      {/* Mobile Sticky Bottom CTA */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-stone-200/90 p-4 shadow-xl flex items-center justify-between gap-3">
+        <div>
+          <span className="text-[11px] text-stone-500 font-medium block">
+            Total Pembayaran
+          </span>
+          <PriceTag price={subtotal} size="md" />
+        </div>
+
+        <Button
+          variant="primary"
+          size="md"
+          loading={submitting}
+          disabled={!selectedAddress}
+          onClick={handleCreateOrder}
+          className="px-6"
+        >
+          Pesan Sekarang
+        </Button>
+      </div>
+
+      {/* Add Address Modal */}
+      <Modal
+        isOpen={showAddressModal}
+        onClose={() => setShowAddressModal(false)}
+        title="Tambah Alamat Pengiriman"
+        description="Pastikan alamat lengkap agar sembako diantar tepat waktu"
+        maxWidth="md"
+      >
+        <form onSubmit={handleAddAddress} className="space-y-3.5">
+          <Input
+            label="Label Alamat (Opsional)"
+            placeholder="Contoh: Rumah, Kos, Warung"
+            value={newAddress.label}
+            onChange={(e) =>
+              setNewAddress((p) => ({ ...p, label: e.target.value }))
+            }
+          />
+
+          <div>
+            <label className="block text-xs font-bold text-stone-700 mb-1.5 uppercase tracking-wide">
+              Alamat Lengkap <span className="text-rose-500">*</span>
+            </label>
+            <textarea
+              required
+              rows={3}
+              placeholder="Nama jalan, nomor rumah, RT/RW, kelurahan, patokan"
+              value={newAddress.address}
+              onChange={(e) =>
+                setNewAddress((p) => ({ ...p, address: e.target.value }))
+              }
+              className="w-full px-3.5 py-2.5 rounded-xl text-sm text-stone-900 bg-stone-50 border border-stone-200 focus:border-pink-500 focus:bg-white focus:ring-4 focus:ring-pink-500/10 transition resize-none focus-ring"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Kota / Kabupaten"
+              required
+              placeholder="Semarang"
+              value={newAddress.city}
+              onChange={(e) =>
+                setNewAddress((p) => ({ ...p, city: e.target.value }))
+              }
+            />
+
+            <Input
+              label="Provinsi"
+              required
+              placeholder="Jawa Tengah"
+              value={newAddress.province}
+              onChange={(e) =>
+                setNewAddress((p) => ({ ...p, province: e.target.value }))
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Kode Pos"
+              required
+              type="text"
+              inputMode="numeric"
+              placeholder="50123"
+              value={newAddress.postal_code}
+              onChange={(e) =>
+                setNewAddress((p) => ({ ...p, postal_code: e.target.value }))
+              }
+            />
+
+            <Input
+              label="Nomor WhatsApp"
+              type="tel"
+              placeholder="08123456789"
+              value={newAddress.phone}
+              onChange={(e) =>
+                setNewAddress((p) => ({ ...p, phone: e.target.value }))
+              }
+            />
+          </div>
+
+          <div className="pt-3 border-t border-stone-100 flex gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              fullWidth
+              onClick={() => setShowAddressModal(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
+              loading={savingAddress}
+            >
+              Simpan Alamat
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
 
 export default CheckoutPage;
-

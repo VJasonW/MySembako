@@ -10,79 +10,35 @@ use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
-    public function index()
+    /**
+     * API: Get all orders for the authenticated buyer
+     */
+    public function apiIndex()
     {
-        $orders = Order::where('buyer_id', Auth::id())->get();
-        return view('orders.index', compact('orders'));
-    }
+        $orders = Auth::user()->orders()
+            ->with(['items.product'])
+            ->latest()
+            ->get()
+            ->map(function ($order) {
+                return [
+                    'id' => $order->id,
+                    'status' => $order->status,
+                    'total_price' => $order->total_price,
+                    'payment_method' => $order->payment_method,
+                    'created_at' => $order->created_at->format('d F Y'),
+                    'created_at_iso' => $order->created_at->toIso8601String(),
+                    'date' => $order->created_at->format('Y-m-d'),
+                    'items' => $order->items->map(function ($item) {
+                        return [
+                            'product_name' => $item->product->name ?? 'Produk dihapus',
+                            'quantity' => $item->quantity,
+                            'price' => $item->price,
+                        ];
+                    }),
+                ];
+            });
 
-    public function create()
-    {
-        return view('orders.create');
-    }
-
-    public function store(Request $request)
-    {
-        $request->validate([
-            'total_price' => 'required|numeric',
-            'status' => 'nullable|string',
-            'order_date' => 'nullable|date',
-        ]);
-
-        Order::create([
-            'buyer_id' => Auth::id(),
-            'total_price' => $request->total_price,
-            'status' => $request->status ?? 'pending',
-            'order_date' => $request->order_date ?? now(),
-        ]);
-
-        return redirect()->route('orders.index');
-    }
-
-    public function show(Order $order)
-    {
-        if ($order->buyer_id !== Auth::id()) {
-            abort(403);
-        }
-
-        return view('orders.show', compact('order'));
-    }
-
-    public function edit(Order $order)
-    {
-        if ($order->buyer_id !== Auth::id()) {
-            abort(403);
-        }
-
-        return view('orders.edit', compact('order'));
-    }
-
-    public function update(Request $request, Order $order)
-    {
-        if ($order->buyer_id !== Auth::id()) {
-            abort(403);
-        }
-
-        $request->validate([
-            'total_price' => 'required|numeric',
-            'status' => 'nullable|string',
-            'order_date' => 'nullable|date',
-        ]);
-
-        $order->update($request->all());
-
-        return redirect()->route('orders.index');
-    }
-
-    public function destroy(Order $order)
-    {
-        if ($order->buyer_id !== Auth::id()) {
-            abort(403);
-        }
-
-        $order->delete();
-
-        return redirect()->route('orders.index');
+        return response()->json($orders);
     }
 
     /**
@@ -90,46 +46,30 @@ class OrderController extends Controller
      */
     public function cancel(Order $order)
     {
-        $user = Auth::user();
-        
-        if (!$user) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
-
-        // Verify order belongs to user
-        if ($order->buyer_id !== $user->id) {
+        if ($order->buyer_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Only allow cancel for pending orders
         if ($order->status !== 'pending') {
             return response()->json([
                 'message' => 'Hanya pesanan dengan status pending yang dapat dibatalkan'
             ], 400);
         }
 
-        DB::beginTransaction();
         try {
-            // Restore stock for all items in the order
-            foreach ($order->items as $item) {
-                $product = Product::find($item->product_id);
-                if ($product) {
-                    $product->increment('stock', $item->quantity);
+            DB::transaction(function () use ($order) {
+                foreach ($order->items as $item) {
+                    Product::where('id', $item->product_id)->increment('stock', $item->quantity);
                 }
-            }
-
-            // Update order status to cancel
-            $order->update(['status' => 'cancel']);
-
-            DB::commit();
+                $order->update(['status' => 'cancel']);
+            });
 
             return response()->json([
                 'message' => 'Pesanan berhasil dibatalkan',
                 'order' => $order->fresh(['items.product']),
             ], 200);
 
-        } catch (\Exception $e) {
-            DB::rollBack();
+        } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'Terjadi kesalahan saat membatalkan pesanan',
                 'error' => $e->getMessage()
@@ -142,18 +82,10 @@ class OrderController extends Controller
      */
     public function complete(Order $order)
     {
-        $user = Auth::user();
-
-        if (!$user) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
-
-        // Verify order belongs to user
-        if ($order->buyer_id !== $user->id) {
+        if ($order->buyer_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Only allow complete for shipped orders
         if ($order->status !== 'shipped') {
             return response()->json([
                 'message' => 'Hanya pesanan dengan status dikirim yang dapat diselesaikan'
@@ -168,7 +100,7 @@ class OrderController extends Controller
                 'order' => $order->fresh(['items.product']),
             ], 200);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'Terjadi kesalahan saat menyelesaikan pesanan',
                 'error' => $e->getMessage()

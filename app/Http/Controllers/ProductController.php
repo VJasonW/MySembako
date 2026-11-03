@@ -11,40 +11,6 @@ use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
-    /**
-     * Kumpulan kategori dasar yang umum untuk sembako.
-     */
-    private function defaultCategoryNames(): array
-    {
-        return [
-            'Beras',
-            'Minyak Goreng',
-            'Gula Pasir',
-            'Telur',
-            'Bumbu Dapur',
-            'Mie & Pasta',
-            'Kopi & Teh',
-            'Susu & Olahan',
-            'Air Minum / Galon',
-            'Gas LPG',
-            'Snack & Cemilan',
-        ];
-    }
-
-    /**
-     * Pastikan kategori dasar tersedia di database dan kembalikan daftar kategori.
-     */
-    private function ensureDefaultCategories()
-    {
-        foreach ($this->defaultCategoryNames() as $name) {
-            Category::firstOrCreate(
-                ['slug' => Str::slug($name)],
-                ['name' => $name]
-            );
-        }
-
-        return Category::orderBy('name')->get();
-    }
 
     /**
      * Dapatkan atau buat kategori berdasarkan nama, mengembalikan category_id.
@@ -74,7 +40,7 @@ class ProductController extends Controller
 
     public function create()
     {
-        $categories = $this->ensureDefaultCategories();
+        $categories = Category::orderBy('name')->get();
 
         return view('products.create', compact('categories'));
     }
@@ -127,7 +93,7 @@ class ProductController extends Controller
             abort(403);
         }
 
-        $categories = $this->ensureDefaultCategories();
+        $categories = Category::orderBy('name')->get();
 
         return view('products.edit', compact('product', 'categories'));
     }
@@ -242,17 +208,10 @@ class ProductController extends Controller
     }
 
     /**
-     * API endpoint untuk daftar kategori (termasuk default bawaan).
+     * API endpoint untuk daftar kategori.
      */
     public function apiCategories()
     {
-        $categories = $this->ensureDefaultCategories()->map(function ($category) {
-            return [
-                'id' => $category->id,
-                'name' => $category->name,
-            ];
-        });
-
-        return response()->json($categories);
+        return response()->json(Category::orderBy('name')->get(['id', 'name']));
     }
 }

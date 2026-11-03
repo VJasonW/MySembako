@@ -19,7 +19,7 @@
             <div class="flex justify-between items-center py-4">
                 <div class="flex items-center gap-3">
                     <img src="/icon/Logo_Mysembako.svg" alt="Logo" class="h-9" onerror="this.style.display='none'">
-                    <span class="text-xl font-bold text-orange-500 tracking-wide">
+                    <span class="text-xl font-bold text-pink-600 tracking-wide">
                         {{ Auth::user()->name ?? 'MySembako' }}
                     </span>
                 </div>
@@ -42,7 +42,7 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <!-- Page Header -->
         <div class="mb-8">
-            <a href="{{ route('owner.orders.index') }}" class="text-orange-500 hover:text-orange-600 mb-4 inline-block">← Kembali ke Daftar Pesanan</a>
+            <a href="{{ route('owner.orders.index') }}" class="text-pink-600 hover:text-pink-700 mb-4 inline-block">← Kembali ke Daftar Pesanan</a>
             <h1 class="text-3xl font-bold text-gray-900">Detail Pesanan #{{ $order->id }}</h1>
         </div>
 
@@ -66,7 +66,7 @@
                                     <p class="text-sm text-gray-600">Qty: {{ $item->quantity }} × Rp {{ number_format($item->price, 0, ',', '.') }}</p>
                                 </div>
                                 <div class="text-right">
-                                    <p class="font-semibold text-orange-500">Rp {{ number_format($item->quantity * $item->price, 0, ',', '.') }}</p>
+                                    <p class="font-semibold text-pink-600">Rp {{ number_format($item->quantity * $item->price, 0, ',', '.') }}</p>
                                 </div>
                             </div>
                         @endforeach
@@ -74,7 +74,7 @@
                         <div class="pt-4 border-t border-gray-200">
                             <div class="flex justify-between items-center">
                                 <span class="font-semibold text-gray-900">Subtotal Produk Anda:</span>
-                                <span class="font-bold text-orange-500 text-lg">
+                                <span class="font-bold text-pink-600 text-lg">
                                     Rp {{ number_format($order->items->sum(function($item) { return $item->quantity * $item->price; }), 0, ',', '.') }}
                                 </span>
                             </div>
@@ -98,7 +98,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Total Harga Pesanan</label>
-                            <p class="text-orange-500 text-2xl font-bold">Rp {{ number_format($order->total_price, 0, ',', '.') }}</p>
+                            <p class="text-pink-600 text-2xl font-bold">Rp {{ number_format($order->total_price, 0, ',', '.') }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Status</label>
@@ -129,14 +129,14 @@
                     <form action="{{ route('owner.orders.update-status', $order) }}" method="POST">
                         @csrf
                         @method('PATCH')
-                        <select name="status" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 mb-4">
+                        <select name="status" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-pink-500 mb-4">
                             <option value="pending" {{ $order->status == 'pending' ? 'selected' : '' }}>Pending</option>
                             <option value="paid" {{ $order->status == 'paid' ? 'selected' : '' }}>Paid</option>
                             <option value="shipped" {{ $order->status == 'shipped' ? 'selected' : '' }}>Shipped</option>
                             <option value="done" {{ $order->status == 'done' ? 'selected' : '' }}>Done</option>
                             <option value="cancel" {{ $order->status == 'cancel' ? 'selected' : '' }}>Cancel</option>
                         </select>
-                        <button type="submit" class="w-full px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-semibold transition-colors">
+                        <button type="submit" class="w-full px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 font-semibold transition-colors">
                             Update Status
                         </button>
                     </form>

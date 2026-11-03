@@ -153,9 +153,4 @@ class AuthPagesController extends BaseController
 
         return redirect()->route('products.index')->with('success', 'Selamat! Toko Anda berhasil dibuat. Silakan mulai menambahkan produk.');
     }
-
-    public function index()
-    {
-        return view('index');
-    }
 }

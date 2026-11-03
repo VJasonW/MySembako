@@ -19,7 +19,7 @@
             <div class="flex justify-between items-center py-4">
                 <div class="flex items-center gap-3">
                     <img src="/icon/Logo_Mysembako.svg" alt="Logo" class="h-9" onerror="this.style.display='none'">
-                    <span class="text-xl font-bold text-orange-500 tracking-wide">MySembako</span>
+                    <span class="text-xl font-bold text-pink-600 tracking-wide">MySembako</span>
                 </div>
                 <a href="{{ route('login') }}" class="px-4 py-2 text-gray-600 hover:text-gray-900 font-semibold text-sm transition-colors">
                     Sudah punya akun? Login
@@ -33,8 +33,8 @@
         <div class="bg-white rounded-xl shadow-sm p-8">
             <!-- Header Section -->
             <div class="text-center mb-8">
-                <div class="inline-flex items-center justify-center w-16 h-16 bg-orange-100 rounded-full mb-4">
-                    <svg class="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-pink-100 rounded-full mb-4">
+                    <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
                     </svg>
                 </div>
@@ -92,7 +92,7 @@
                         name="name" 
                         value="{{ old('name') }}" 
                         required
-                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-orange-500 transition-colors"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-pink-500 transition-colors"
                         placeholder="Masukkan nama Anda"
                     >
                 </div>
@@ -108,7 +108,7 @@
                         name="email" 
                         value="{{ old('email') }}" 
                         required
-                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-orange-500 transition-colors"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-pink-500 transition-colors"
                         placeholder="contoh@email.com"
                     >
                     <p class="mt-2 text-sm text-gray-500">Email ini akan digunakan untuk login</p>
@@ -124,7 +124,7 @@
                         id="no_telp" 
                         name="no_telp" 
                         value="{{ old('no_telp') }}" 
-                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-orange-500 transition-colors"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-pink-500 transition-colors"
                         placeholder="081234567890"
                     >
                     <p class="mt-2 text-sm text-gray-500">Nomor telepon untuk kontak (opsional)</p>
@@ -140,7 +140,7 @@
                         id="location" 
                         name="location" 
                         value="{{ old('location') }}" 
-                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-orange-500 transition-colors"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-pink-500 transition-colors"
                         placeholder="Contoh: Jakarta, Bandung, Surabaya"
                     >
                     <p class="mt-2 text-sm text-gray-500">Kota lokasi toko Anda (opsional)</p>
@@ -158,7 +158,7 @@
                             name="password" 
                             required
                             minlength="6"
-                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-orange-500 transition-colors pr-12"
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-pink-500 transition-colors pr-12"
                             placeholder="Minimal 6 karakter"
                         >
                         <button 
@@ -190,7 +190,7 @@
                             name="password_confirmation" 
                             required
                             minlength="6"
-                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-orange-500 transition-colors pr-12"
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-pink-500 transition-colors pr-12"
                             placeholder="Ulangi password"
                         >
                         <button 
@@ -211,7 +211,7 @@
 
                 <!-- Submit Button -->
                 <div class="pt-4">
-                    <button type="submit" class="w-full px-6 py-3 bg-orange-500 text-white rounded-full font-semibold hover:bg-orange-600 transition-colors">
+                    <button type="submit" class="w-full px-6 py-3 bg-pink-600 text-white rounded-full font-semibold hover:bg-pink-700 transition-colors">
                         Daftar & Buka Toko
                     </button>
                 </div>
@@ -220,7 +220,7 @@
                 <div class="text-center mt-6">
                     <p class="text-sm text-gray-600">
                         Sudah punya akun? 
-                        <a href="{{ route('login') }}" class="text-orange-500 font-semibold hover:text-orange-600">
+                        <a href="{{ route('login') }}" class="text-pink-600 font-semibold hover:text-pink-700">
                             Login di sini
                         </a>
                     </p>

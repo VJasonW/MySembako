@@ -1,10 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import TopNavbar from "../../components/commons/molecules/TopNavbar";
 import BottomNavbar from "../../components/commons/molecules/BottomNavbar";
-
-// const PRIMARY_COLOR = "#BF4413";
-// const SECONDARY_COLOR = "#FFCCB8";
-// const BACKGROUND_COLOR = "#FFE6DD";
+import { ProductCard } from "../../components/ui/ProductCard";
+import { ProductGridSkeleton } from "../../components/ui/Skeleton";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { Modal } from "../../components/ui/Modal";
+import { QuantityStepper } from "../../components/ui/QuantityStepper";
+import { PriceTag } from "../../components/ui/PriceTag";
+import { Button } from "../../components/ui/Button";
+import { Badge } from "../../components/ui/Badge";
+import { useCart } from "../../context/CartContext";
+import { parsePrice, formatRupiah } from "../../utils/format";
+import { apiFetch } from "../../lib/api";
 
 const DEFAULT_CATEGORIES = [
   "Beras",
@@ -21,50 +28,53 @@ const DEFAULT_CATEGORIES = [
 ];
 
 function HomePage() {
-  // State produk list diambil dari database (API)
-  const [productsList, setProductsList] = useState([]);
-  const [allProducts, setAllProducts] = useState([]); // Simpan semua produk untuk filtering
+  const { addToCart } = useCart();
+  const [allProducts, setAllProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryOptions, setCategoryOptions] = useState(DEFAULT_CATEGORIES);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [categoryQuery, setCategoryQuery] = useState("");
-  const [showModal, setShowModal] = useState(false);
+  const [sortBy, setSortBy] = useState("default");
+
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [addingToCart, setAddingToCart] = useState(false);
 
-  // Fetch produk dari "database" saat komponen dimount
+  // Check URL search params for initial query (e.g. from TopNavbar search redirect)
   useEffect(() => {
-    // Contoh fetch ke API database produk
-    // Ganti URL sesuai endpoint yang digunakan
-    const fetchProducts = async () => {
-      try {
-        // Misal API produk di /api/products (Anda sesuaikan sendiri)
-        const response = await fetch("/api/products");
-        if (!response.ok) {
-          throw new Error("Gagal memuat produk dari database");
-        }
-        const data = await response.json();
-        setAllProducts(data); // Simpan semua produk
-        setProductsList(data); // Set initial products
-      } catch (error) {
-        console.error("Error fetch produk:", error);
-        // Fallback jika fetch gagal (bisa kasih pesan atau data dummy)
-        setAllProducts([]);
-        setProductsList([]);
-      }
-    };
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
+    if (q) {
+      setSearchQuery(q);
+    }
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await apiFetch("/api/products");
+      setAllProducts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error fetch produk:", err);
+      setError(err.message || "Gagal memuat katalog sembako");
+      setAllProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchProducts();
   }, []);
 
-  // Fetch kategori dari API (gabungkan dengan kategori default)
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch("/api/categories");
-        if (!res.ok) {
-          throw new Error("Gagal memuat kategori");
-        }
-        const data = await res.json();
+        const data = await apiFetch("/api/categories");
         const names = Array.from(
           new Set([
             ...DEFAULT_CATEGORIES,
@@ -72,176 +82,194 @@ function HomePage() {
           ])
         );
         setCategoryOptions(names);
-      } catch (error) {
-        console.error("Error fetch kategori:", error);
+      } catch {
         setCategoryOptions(DEFAULT_CATEGORIES);
       }
     };
     fetchCategories();
   }, []);
 
-  // Filter produk berdasarkan search query
-  useEffect(() => {
+  // Filter & sort produk secara reaktif (useMemo)
+  const productsList = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
     const categoryFilter = selectedCategory.toLowerCase().trim();
-    const categorySearch = categoryQuery.toLowerCase().trim();
-    if (!query && !categoryFilter && !categorySearch) {
-      // Jika tidak ada filter, tampilkan semua produk
-      setProductsList(allProducts);
-      return;
+    const customCatSearch = categoryQuery.toLowerCase().trim();
+
+    let list = allProducts;
+    if (query || categoryFilter || customCatSearch) {
+      list = allProducts.filter((product) => {
+        const nameMatch = (product.name || "").toLowerCase().includes(query);
+        const descMatch = (product.description || product.desc || "")
+          .toLowerCase()
+          .includes(query);
+        const storeMatch = (product.store || "").toLowerCase().includes(query);
+        const categoryText = (product.category || "").toLowerCase();
+
+        const selectedMatch = categoryFilter
+          ? categoryText.includes(categoryFilter)
+          : true;
+        const customCategoryMatch = customCatSearch
+          ? categoryText.includes(customCatSearch)
+          : true;
+
+        const baseMatch = query ? nameMatch || descMatch || storeMatch : true;
+        return baseMatch && selectedMatch && customCategoryMatch;
+      });
     }
 
-    const filtered = allProducts.filter((product) => {
-      const nameMatch = product.name?.toLowerCase().includes(query);
-      const descMatch = (product.description || product.desc || "")
-        .toLowerCase()
-        .includes(query);
-      const storeMatch = (product.store || "").toLowerCase().includes(query);
-      const categoryText = (product.category || "").toLowerCase();
-      const selectedMatch = categoryFilter
-        ? categoryText.includes(categoryFilter)
-        : true;
-      const customCategoryMatch = categorySearch
-        ? categoryText.includes(categorySearch)
-        : true;
-      
-      const baseMatch = query ? nameMatch || descMatch || storeMatch : true;
-      return baseMatch && selectedMatch && customCategoryMatch;
-    });
+    if (sortBy === "price_asc") {
+      list = [...list].sort(
+        (a, b) => parsePrice(a.price || a.harga) - parsePrice(b.price || b.harga)
+      );
+    } else if (sortBy === "price_desc") {
+      list = [...list].sort(
+        (a, b) => parsePrice(b.price || b.harga) - parsePrice(a.price || a.harga)
+      );
+    } else if (sortBy === "name_asc") {
+      list = [...list].sort((a, b) =>
+        (a.name || "").localeCompare(b.name || "")
+      );
+    } else if (sortBy === "name_desc") {
+      list = [...list].sort((a, b) =>
+        (b.name || "").localeCompare(a.name || "")
+      );
+    } else if (sortBy === "latest") {
+      list = [...list].sort((a, b) => (b.id || 0) - (a.id || 0));
+    }
 
-    setProductsList(filtered);
-  }, [searchQuery, allProducts, selectedCategory, categoryQuery]);
+    return list;
+  }, [searchQuery, allProducts, selectedCategory, categoryQuery, sortBy]);
 
-  // Helper functions for price parsing/formatting
-  const parsePrice = (priceStr) => {
-    return Number(
-      // Mendukung string harga "Rp 99.999" atau hanya int: 99999
-      typeof priceStr === "number"
-        ? priceStr
-        : priceStr.replace(/Rp\s?|\./g, "").trim()
-    );
-  };
-
-  // Karena harga bisa dari DB berupa number, support format rupiah
-  const formatRupiah = (number) => {
-    if (typeof number !== "number") number = Number(number) || 0;
-    return (
-      "Rp " +
-      number
-        .toString()
-        .replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-    );
-  };
-
-  const openModal = (product) => {
+  const openProductModal = (product) => {
     setSelectedProduct(product);
-    setQuantity(1); // Reset saat buka modal baru
-    setShowModal(true);
+    setQuantity(1);
   };
 
-  const closeModal = () => {
-    setShowModal(false);
+  const closeProductModal = () => {
     setSelectedProduct(null);
     setQuantity(1);
   };
 
-  const addToCart = async (product) => {
-    try {
-      // Get CSRF token from meta tag
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-      
-      const response = await fetch('/api/cart', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': csrfToken || '',
-          'Accept': 'application/json',
-        },
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          product_id: product.id,
-          quantity: quantity,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        alert(data.message || 'Gagal menambahkan produk ke keranjang');
-        return;
-      }
-
-      // Success - close modal and show notification
-      alert('Produk berhasil ditambahkan ke keranjang!');
-      closeModal();
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      alert('Terjadi kesalahan saat menambahkan produk ke keranjang');
+  const handleModalAddToCart = async () => {
+    if (!selectedProduct) return;
+    setAddingToCart(true);
+    const success = await addToCart(selectedProduct, quantity);
+    setAddingToCart(false);
+    if (success) {
+      closeProductModal();
     }
   };
 
-  const handleQuantityChange = (e) => {
-    let val = parseInt(e.target.value, 10) || 1;
-    if (val < 1) val = 1;
-    if (val > selectedProduct.stock) val = selectedProduct.stock;
-    setQuantity(val);
+  const handleResetFilter = () => {
+    setSelectedCategory("");
+    setCategoryQuery("");
+    setSearchQuery("");
+    setSortBy("default");
+    if (window.history.pushState) {
+      window.history.pushState({}, "", "/home");
+    }
   };
 
-  const incQty = () => {
-    if (quantity < selectedProduct.stock) setQuantity(quantity + 1);
-  };
-
-  const decQty = () => {
-    if (quantity > 1) setQuantity(quantity - 1);
-  };
-
-  let dynamicTotalPrice = selectedProduct
-    ? formatRupiah(parsePrice(selectedProduct.price) * quantity)
-    : "";
+  const dynamicTotalPrice = selectedProduct
+    ? parsePrice(selectedProduct.price || selectedProduct.harga) * quantity
+    : 0;
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-[#FAFAF8] min-h-screen text-stone-900 pb-28 flex flex-col font-sans">
       {/* Top Navbar */}
-      <div className="">
-        <TopNavbar 
-          searchQuery={searchQuery}
-          onSearchChange={(e) => setSearchQuery(e.target.value)}
-          selectedCategory={selectedCategory}
-          categoryQuery={categoryQuery}
-          categoryOptions={categoryOptions}
-          onCategorySelect={(value) =>
-            setSelectedCategory((prev) => (prev === value ? "" : value))
-          }
-          onCategoryQueryChange={(value) => setCategoryQuery(value)}
-          onResetFilter={() => {
-            setSelectedCategory("");
-            setCategoryQuery("");
-            setSearchQuery("");
-            setProductsList(allProducts);
-          }}
-        />
-      </div>
-      {/* Filter Kategori */}
-      <div className="max-w-7xl mx-auto px-2 md:px-4 mt-4">
-        <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 md:p-5 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-sm md:text-base font-semibold text-gray-800">
-              Pilih kategori atau cari sendiri
+      <TopNavbar
+        searchQuery={searchQuery}
+        onSearchChange={(e) => setSearchQuery(e.target.value)}
+        selectedCategory={selectedCategory}
+        categoryQuery={categoryQuery}
+        categoryOptions={categoryOptions}
+        onCategorySelect={(val) =>
+          setSelectedCategory((prev) => (prev === val ? "" : val))
+        }
+        onCategoryQueryChange={(val) => setCategoryQuery(val)}
+        sortBy={sortBy}
+        onSortChange={(val) => setSortBy(val)}
+        onResetFilter={handleResetFilter}
+      />
+
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-5 w-full flex-1">
+        {/* Banner Promo Hero */}
+        <section className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-pink-600 via-pink-500 to-rose-400 text-white shadow-lg shadow-pink-600/10 mb-8 p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="max-w-xl">
+            <span className="inline-block px-3 py-1 rounded-full bg-white/20 backdrop-blur-xs text-xs font-bold uppercase tracking-wider mb-3 text-pink-100">
+              Kebutuhan Harian Terjamin
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight">
+              Belanja Sembako Tanpa Ribet
+            </h1>
+            <p className="text-pink-100 text-xs sm:text-sm mt-2 leading-relaxed">
+              Beras pulen, minyak kemasan, gula, dan telur segar siap diantar
+              langsung dari warung sembako di kotamu.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 px-4 py-3 rounded-2xl flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white text-pink-600 flex items-center justify-center font-bold">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                </svg>
+              </div>
+              <div className="text-xs">
+                <div className="font-semibold text-white">Stok Terkini</div>
+                <div className="text-pink-200">Selalu Diperbarui</div>
+              </div>
             </div>
+          </div>
+        </section>
+
+        {/* Category Horizontal Filter Bar */}
+        <section className="mb-6">
+          <div className="flex items-center justify-between gap-4 mb-3">
+            <h2 className="text-sm sm:text-base font-bold text-stone-900 flex items-center gap-2">
+              <span>Kategori Sembako</span>
+              {selectedCategory && (
+                <Badge variant="brand" size="sm">
+                  {selectedCategory}
+                </Badge>
+              )}
+            </h2>
+
+            {(selectedCategory || categoryQuery || searchQuery) && (
+              <button
+                type="button"
+                onClick={handleResetFilter}
+                className="text-xs font-bold text-pink-600 hover:text-pink-700 transition"
+              >
+                Reset Filter
+              </button>
+            )}
+          </div>
+
+          {/* Scrollable Category Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
             <button
               type="button"
-              onClick={() => {
-                setSelectedCategory("");
-                setCategoryQuery("");
-                setProductsList(allProducts);
-              }}
-              className="text-sm font-semibold text-orange-600 hover:text-orange-700"
+              onClick={() => setSelectedCategory("")}
+              className={`px-4 py-2 rounded-full text-xs font-semibold shrink-0 transition-all active:scale-95 focus-ring ${
+                selectedCategory === ""
+                  ? "bg-stone-900 text-white shadow-xs"
+                  : "bg-white text-stone-700 border border-stone-200 hover:border-stone-300"
+              }`}
             >
-              Reset kategori
+              Semua
             </button>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {categoryOptions.slice(0, 12).map((cat) => {
+            {categoryOptions.map((cat) => {
               const isActive = selectedCategory === cat;
               return (
                 <button
@@ -250,10 +278,10 @@ function HomePage() {
                   onClick={() =>
                     setSelectedCategory((prev) => (prev === cat ? "" : cat))
                   }
-                  className={`px-3 py-1.5 rounded-full text-sm border transition ${
+                  className={`px-4 py-2 rounded-full text-xs font-semibold shrink-0 transition-all active:scale-95 focus-ring ${
                     isActive
-                      ? "bg-orange-500 text-white border-orange-500"
-                      : "bg-white text-gray-700 border-orange-200 hover:border-orange-400"
+                      ? "bg-pink-600 text-white shadow-xs shadow-pink-600/30"
+                      : "bg-white text-stone-700 border border-stone-200 hover:border-pink-300 hover:bg-pink-50/40"
                   }`}
                 >
                   {cat}
@@ -261,136 +289,140 @@ function HomePage() {
               );
             })}
           </div>
-          <div className="mt-4 flex flex-wrap gap-3 items-center">
-            <div className="flex-1 min-w-[200px]">
-              <input
-                type="text"
-                list="category-search-list"
-                value={categoryQuery}
-                onChange={(e) => setCategoryQuery(e.target.value)}
-                className="w-full px-4 py-2 border border-orange-200 rounded-full focus:outline-none focus:border-orange-500 transition"
-                placeholder="Cari kategori lain (misal: rempah, sayur)..."
-              />
-              <datalist id="category-search-list">
-                {categoryOptions.map((cat) => (
-                  <option key={cat} value={cat}></option>
-                ))}
-              </datalist>
-              <p className="text-xs text-gray-600 mt-1">
-                Jika kategori belum ada di pilihan, ketik saja — kami akan cari yang cocok.
-              </p>
-            </div>
+        </section>
+
+        {/* Product Grid Header */}
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="text-xs sm:text-sm font-bold text-stone-800">
+            Daftar Produk {!loading && `(${productsList.length})`}
           </div>
         </div>
-      </div>
-      {/* Produk grid */}
-      <div className="max-w-7xl mx-auto px-2 md:px-4 mt-10 mb-30">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-7">
-          {productsList.length === 0 && (
-            <div className="col-span-full text-center text-gray-400 py-10">
-              {searchQuery.trim() 
-                ? `Tidak ada produk ditemukan untuk "${searchQuery}"` 
-                : "Tidak ada produk ditemukan."}
-            </div>
-          )}
-          {productsList.map((product, idx) => (
-            <div
-              key={product.id || idx}
-              className="flex flex-col h-full bg-white border border-gray-200 rounded-2xl shadow-sm px-3.5 py-4 md:px-4 md:py-5 mb-3 transition hover:shadow-md cursor-pointer"
-              onClick={() => openModal(product)}
-            >
-              <div className="flex justify-center items-start mb-3 min-h-[85px] md:min-h-[110px]">
-                <img
-                  src={product.img}
-                  alt={product.name}
-                  className="h-[70px] md:h-[90px] object-contain"
-                />
-              </div>
-              <div className="flex-grow flex flex-col justify-between">
-                <div className="line-clamp-2 font-semibold text-gray-900 text-xs md:text-base leading-snug mb-1 md:mb-1.5 truncate">
-                  {product.name}
-                </div>
-                <div className="text-sm md:text-lg font-bold text-gray-900 mb-1 md:mb-2">
-                  {typeof product.price === "number"
-                    ? formatRupiah(product.price)
-                    : product.price}
-                </div>
-              </div>
-              <div className="text-xs md:text-sm text-gray-400 leading-tight truncate">{product.store}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-      {/* Modal */}
-      {showModal && selectedProduct && (
-        // Ganti modal jadi floating tanpa overlay background
-        <div className="fixed left-0 top-0 w-full h-full z-40 pointer-events-none">
-          <div
-            className="absolute pointer-events-auto left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-xl p-6 md:p-7 max-w-xs w-full relative"
-            style={{
-              boxShadow:
-                "0 4px 24px 0 rgba(55, 51, 48, 0.13), 0 2px 8px 0 rgba(180,131,91,0.12)",
-            }}
-          >
-            <button
-              onClick={closeModal}
-              className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 text-2xl font-bold focus:outline-none"
-              aria-label="Tutup"
-            >
-              &times;
-            </button>
-            <div className="flex flex-col items-center px-2">
+
+        {/* Content Area: Loading / Error / Empty / Grid */}
+        {loading ? (
+          <ProductGridSkeleton count={10} />
+        ) : error ? (
+          <EmptyState
+            title="Gagal Memuat Produk"
+            description={error}
+            actionLabel="Coba Lagi"
+            onAction={fetchProducts}
+          />
+        ) : productsList.length === 0 ? (
+          <EmptyState
+            title="Produk Tidak Ditemukan"
+            description={
+              searchQuery.trim()
+                ? `Tidak ada sembako yang cocok dengan kata kunci "${searchQuery}". Coba kata kunci lain.`
+                : "Belum ada produk aktif yang tersedia di kategori ini."
+            }
+            actionLabel={
+              searchQuery.trim() || selectedCategory ? "Reset Pencarian" : null
+            }
+            onAction={handleResetFilter}
+          />
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5 sm:gap-5">
+            {productsList.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onClick={openProductModal}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Product Quick-Add Modal */}
+      <Modal
+        isOpen={!!selectedProduct}
+        onClose={closeProductModal}
+        maxWidth="sm"
+      >
+        {selectedProduct && (
+          <div className="flex flex-col items-center text-center">
+            {/* Image Preview */}
+            <div className="w-32 h-32 rounded-2xl bg-stone-50 border border-stone-100 flex items-center justify-center p-3 mb-4 overflow-hidden">
               <img
-                src={selectedProduct.img}
+                src={
+                  selectedProduct.img ||
+                  selectedProduct.image ||
+                  "/icon/Logo_Mysembako.svg"
+                }
                 alt={selectedProduct.name}
-                className="h-20 md:h-24 object-contain mb-3 md:mb-4"
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  e.currentTarget.src = "/icon/Logo_Mysembako.svg";
+                }}
               />
-              <h2 className="text-base md:text-lg font-bold mb-1.5 md:mb-2 text-center">{selectedProduct.name}</h2>
-              <div className="text-gray-700 text-xs md:text-sm mb-1.5 md:mb-2 text-center">
-                {selectedProduct.description || selectedProduct.desc || ''}
-              </div>
-              <div className="text-gray-900 font-semibold text-xs md:text-base mb-1.5 md:mb-2">
-                {dynamicTotalPrice}
-              </div>
-              <div className="text-gray-500 text-xs md:text-sm mb-1.5 md:mb-2">
-                Sisa Stock: <span className="font-semibold">{selectedProduct.stock}</span>
-              </div>
-              {/* Selector jumlah produk */}
-              <div className="mb-3 md:mb-5 flex items-center justify-center gap-2">
-                <button
-                  type="button"
-                  className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 text-base md:text-lg font-bold"
-                  onClick={decQty}
-                  disabled={quantity <= 1}
-                  tabIndex="0"
-                >-</button>
-                <input
-                  type="number"
-                  className="w-12 md:w-14 text-center border border-gray-300 rounded py-0.5"
-                  value={quantity}
-                  min={1}
-                  max={selectedProduct.stock}
-                  onChange={handleQuantityChange}
-                />
-                <button
-                  type="button"
-                  className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 text-base md:text-lg font-bold"
-                  onClick={incQty}
-                  disabled={quantity >= selectedProduct.stock}
-                  tabIndex="0"
-                >+</button>
-              </div>
-              <button
-                className="px-6 md:px-8 py-2 md:py-2.5 bg-[#BF4413] text-white rounded-lg hover:bg-[#a5380f] transition font-semibold text-sm md:text-base w-full"
-                onClick={() => addToCart(selectedProduct)}
-                disabled={selectedProduct.stock < 1 || quantity < 1}
-              >
-                {selectedProduct.stock > 0 ? "Tambah ke Keranjang" : "Stok Habis"}
-              </button>
             </div>
+
+            <Badge variant="brand" size="sm" className="mb-1.5">
+              {selectedProduct.category || "Sembako"}
+            </Badge>
+
+            <h3 className="text-base sm:text-lg font-extrabold text-stone-900 mb-1 leading-snug">
+              {selectedProduct.name}
+            </h3>
+
+            <p className="text-xs text-stone-500 mb-4 line-clamp-2 max-w-xs leading-relaxed">
+              {selectedProduct.description ||
+                "Bahan pokok berkualitas untuk kebutuhan dapur Anda."}
+            </p>
+
+            {/* Price & Stock Card */}
+            <div className="w-full bg-pink-50/70 border border-pink-100/80 rounded-2xl p-3.5 mb-4 flex items-center justify-between text-left">
+              <div>
+                <span className="text-[11px] text-stone-500 font-medium block">
+                  Total Harga
+                </span>
+                <PriceTag price={dynamicTotalPrice} size="md" />
+              </div>
+              <div className="text-right">
+                <span className="text-[11px] text-stone-500 font-medium block">
+                  Sisa Stok
+                </span>
+                <span className="text-xs sm:text-sm font-bold text-stone-800">
+                  {selectedProduct.stock > 0
+                    ? `${selectedProduct.stock} unit`
+                    : "Habis"}
+                </span>
+              </div>
+            </div>
+
+            {/* Quantity Stepper */}
+            <div className="mb-5 flex flex-col items-center gap-1.5">
+              <span className="text-xs font-bold text-stone-600">
+                Pilih Jumlah:
+              </span>
+              <QuantityStepper
+                value={quantity}
+                onChange={setQuantity}
+                min={1}
+                max={Number(selectedProduct.stock) || 1}
+                disabled={selectedProduct.stock <= 0}
+              />
+            </div>
+
+            {/* CTA Button */}
+            <Button
+              variant="primary"
+              fullWidth
+              size="lg"
+              loading={addingToCart}
+              disabled={selectedProduct.stock <= 0}
+              onClick={handleModalAddToCart}
+            >
+              {selectedProduct.stock <= 0
+                ? "Stok Habis"
+                : "Tambah ke Keranjang"}
+            </Button>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
+
+      {/* Bottom Nav */}
       <BottomNavbar />
     </div>
   );

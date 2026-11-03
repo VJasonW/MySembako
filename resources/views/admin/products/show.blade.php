@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="mb-8">
-    <a href="{{ route('admin.products') }}" class="text-orange-500 hover:text-orange-600 mb-4 inline-block">← Kembali</a>
+    <a href="{{ route('admin.products') }}" class="text-pink-600 hover:text-pink-700 mb-4 inline-block">← Kembali</a>
     <h1 class="text-3xl font-bold text-gray-900">Detail Produk</h1>
 </div>
 
@@ -28,7 +28,7 @@
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-2">Harga</label>
-                <p class="text-orange-500 text-xl font-bold">Rp {{ number_format($product->price, 0, ',', '.') }}</p>
+                <p class="text-pink-600 text-xl font-bold">Rp {{ number_format($product->price, 0, ',', '.') }}</p>
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-2">Stok</label>

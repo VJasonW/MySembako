@@ -1,170 +1,107 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../../../context/AuthContext";
+import { useCart } from "../../../../context/CartContext";
+import { useToast } from "../../../../context/ToastContext";
+import { cityFromCoords } from "../../../../utils/location";
+import { Modal } from "../../../ui/Modal";
+import { Button } from "../../../ui/Button";
+import { Input } from "../../../ui/Input";
 
-/**
- * TopNavbar component:
- * Navbar dengan logo, search bar, tombol filter & user, serta modal profile & modal filter terpisah.
- * 
- * Props:
- * - userName
- * - onShowProfile
- * - onShowFilter
- * - searchQuery
- * - onSearchChange
- * - selectedCategory
- * - categoryQuery
- * - categoryOptions
- * - onCategorySelect
- * - onCategoryQueryChange
- * - onResetFilter
- */
 const TopNavbar = ({
-  userName: userNameProp = "Pengguna",
-  onShowProfile = () => {},
-  onShowFilter = () => {},
   searchQuery = "",
-  onSearchChange = () => {},
+  onSearchChange,
   selectedCategory = "",
   categoryQuery = "",
   categoryOptions = [],
   onCategorySelect = () => {},
   onCategoryQueryChange = () => {},
   onResetFilter = () => {},
+  sortBy = "default",
+  onSortChange = () => {},
+  variant = "auto",
 }) => {
-  // Hooks
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, isAuthenticated, updateProfile, logout } = useAuth();
+  const { cartCount } = useCart();
+  const { showToast } = useToast();
 
-  // State
-  const [filterPressed, setFilterPressed] = useState(false);
-  const [userPressed, setUserPressed] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
-  const [userName, setUserName] = useState(userNameProp);
-  const [userData, setUserData] = useState({
-    name: userNameProp,
-    email: "",
-    phone: "",
-    location: "",
-    role_id: null,
-  });
+  const [localSearch, setLocalSearch] = useState(searchQuery);
   const [formData, setFormData] = useState({
-    name: userNameProp,
+    name: "",
     email: "",
     phone: "",
   });
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingLocation, setSavingLocation] = useState(false);
-  // Ukuran tombol medium: di-set ke 40px (icon medium) baik mobile maupun desktop
-  const [buttonSize, setButtonSize] = useState(40);
 
-  // Mendapatkan path aktif
-  const currentPath = location.pathname;
-
-  // Effect: Responsive button size (tapi tetap medium/40px)
+  // Sync user data to form
   useEffect(() => {
-    setButtonSize(40);
-    // window resize for future use, but keep 40
-    const onResize = () => setButtonSize(40);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
+    if (user) {
+      setFormData({
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+      });
+    }
+  }, [user]);
 
-  // Fetch profil pengguna dari session (API)
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetch("/api/user", {
-          method: "GET",
-          credentials: "same-origin",
-          headers: { Accept: "application/json" },
-        });
+    setLocalSearch(searchQuery);
+  }, [searchQuery]);
 
-        if (res.ok) {
-          const data = await res.json();
-          setUserData({
-            name: data.name || "Pengguna",
-            email: data.email || "",
-            phone: data.phone || "",
-            location: data.location || "",
-            role_id: data.role_id || null,
-          });
-          setUserName(data.name || "Pengguna");
-          setFormData({
-            name: data.name || "",
-            email: data.email || "",
-            phone: data.phone || "",
-          });
-        }
-      } catch (error) {
-        console.error("Gagal mengambil profil user:", error);
-      }
-    };
+  const isCheckout = location.pathname.startsWith("/checkout");
+  const isHome = location.pathname === "/home";
+  const displayVariant = variant === "auto" ? (isCheckout ? "minimal" : "full") : variant;
 
-    fetchUser();
-  }, [userNameProp]);
-
-  const handleProfileChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const handleLogoClick = () => {
+    navigate("/home");
   };
 
-  const handleSaveProfile = async () => {
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (!isHome) {
+      navigate(`/home?q=${encodeURIComponent(localSearch.trim())}`);
+    }
+  };
+
+  const handleSearchInputChange = (e) => {
+    const val = e.target.value;
+    setLocalSearch(val);
+    if (typeof onSearchChange === "function") {
+      onSearchChange(e);
+    }
+  };
+
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
     try {
       setSavingProfile(true);
-      const csrfToken = document
-        .querySelector('meta[name="csrf-token"]')
-        ?.getAttribute("content");
-
-      const res = await fetch("/api/user", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-TOKEN": csrfToken || "",
-          Accept: "application/json",
-        },
-        credentials: "same-origin",
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-        }),
+      await updateProfile(formData);
+      showToast({
+        message: "Profil Anda berhasil diperbarui!",
+        type: "success",
       });
-
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({}));
-        alert(error.message || "Gagal menyimpan profil");
-        return;
-      }
-
-      const data = await res.json();
-      setUserData((prev) => ({ ...prev, ...data }));
-      setUserName(data.name || "Pengguna");
-      alert("Profil berhasil diperbarui");
+      setShowProfile(false);
     } catch (error) {
-      console.error("Gagal menyimpan profil:", error);
-      alert("Terjadi kesalahan saat menyimpan profil");
+      showToast({
+        message: error.message || "Gagal menyimpan perubahan profil",
+        type: "error",
+      });
     } finally {
       setSavingProfile(false);
     }
   };
 
-  const cityFromCoords = (lat, lng) => {
-    const boxes = [
-      { name: "Jakarta", lat: [-6.4, -6.0], lng: [106.6, 107.0] },
-      { name: "Semarang", lat: [-7.1, -6.8], lng: [110.3, 110.6] },
-      { name: "Surabaya", lat: [-7.4, -7.1], lng: [112.6, 112.9] },
-      { name: "Jogja", lat: [-7.9, -7.6], lng: [110.3, 110.6] },
-    ];
-
-    const match = boxes.find(
-      (b) => lat >= b.lat[0] && lat <= b.lat[1] && lng >= b.lng[0] && lng <= b.lng[1]
-    );
-    return match ? match.name : null;
-  };
-
   const handleActivateLocation = () => {
     if (!navigator.geolocation) {
-      alert("Geolocation tidak didukung di browser ini.");
+      showToast({
+        message: "Perangkat ini tidak mendukung deteksi lokasi (Geolocation).",
+        type: "warning",
+      });
       return;
     }
 
@@ -176,488 +113,385 @@ const TopNavbar = ({
           const city = cityFromCoords(latitude, longitude);
 
           if (!city) {
-            alert("Lokasi tidak dikenali. Pastikan berada di Jakarta/Semarang/Surabaya/Jogja.");
+            showToast({
+              message: "Lokasi belum terjangkau. Wilayah aktif: Jakarta, Semarang, Surabaya, Jogja.",
+              type: "warning",
+            });
             return;
           }
 
-          const csrfToken = document
-            .querySelector('meta[name="csrf-token"]')
-            ?.getAttribute("content");
-
-          const res = await fetch("/api/user", {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-              "X-CSRF-TOKEN": csrfToken || "",
-              Accept: "application/json",
-            },
-            credentials: "same-origin",
-            body: JSON.stringify({ location: city }),
+          await updateProfile({ location: city });
+          showToast({
+            message: `Lokasi berhasil diperbarui: Kota ${city}!`,
+            type: "success",
           });
-
-          if (!res.ok) {
-            const error = await res.json().catch(() => ({}));
-            alert(error.message || "Gagal menyimpan lokasi");
-            return;
-          }
-
-          const data = await res.json();
-          setUserData((prev) => ({ ...prev, ...data }));
-          alert("Lokasi berhasil diperbarui menjadi " + city);
         } catch (err) {
-          console.error("Gagal memperbarui lokasi:", err);
-          alert("Terjadi kesalahan saat memperbarui lokasi");
+          showToast({
+            message: err.message || "Gagal memperbarui lokasi",
+            type: "error",
+          });
         } finally {
           setSavingLocation(false);
         }
       },
       (err) => {
-        console.error("Geolocation error:", err);
-        alert("Tidak dapat mengakses lokasi. Pastikan izin lokasi diaktifkan.");
+        let msg = "Izin lokasi tidak diberikan.";
+        if (err.code === 2) msg = "Lokasi tidak dapat ditentukan.";
+        if (err.code === 3) msg = "Waktu permintaan lokasi habis.";
+        showToast({
+          message: msg,
+          type: "warning",
+        });
         setSavingLocation(false);
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     );
   };
 
-  // Handler: Navigasi Logo
-  const handleLogoClick = useCallback(() => {
-    if (currentPath !== "/") {
-      navigate("/");
-    }
-  }, [currentPath, navigate]);
-
-  // Handler User Button
-  const handleUserButtonClick = useCallback(() => {
-    if (currentPath === "/profile") {
-      return;
-    } else {
-      setShowProfile(true);
-      onShowProfile();
-    }
-  }, [onShowProfile, currentPath]);
-
-  // Handler Filter Button
-  const handleFilterButtonClick = useCallback(() => {
-    if (currentPath === "/filter") {
-      return;
-    } else {
-      setShowFilter(true);
-      onShowFilter();
-    }
-  }, [onShowFilter, currentPath]);
-
-  const handleCloseProfile = useCallback(() => setShowProfile(false), []);
-  const handleCloseFilter = useCallback(() => setShowFilter(false), []);
-
-  const isProfilePage = currentPath === "/profile";
-  const isFilterPage = currentPath === "/filter";
-
-  // Handler Logout: clear local data + hit backend logout
-  const handleLogout = async () => {
-    // Clear local/session data
-    localStorage.removeItem("userName");
-    localStorage.removeItem("loggedInUsername");
-    sessionStorage.clear();
-
-    try {
-      const csrfToken = document
-        .querySelector('meta[name="csrf-token"]')
-        ?.getAttribute("content");
-
-      await fetch("/logout", {
-        method: "POST",
-        headers: {
-          "X-CSRF-TOKEN": csrfToken || "",
-          Accept: "application/json",
-        },
-        credentials: "same-origin",
-      });
-    } catch (error) {
-      console.error("Logout failed:", error);
-    } finally {
-      setUserName("Pengguna");
-      setShowProfile(false);
-      // Gunakan full reload agar halaman login dari Laravel (blade) di-load
-      window.location.href = "/login";
-    }
-  };
-
   return (
-    <header
-      className="sticky top-0 w-full flex items-center bg-white border-b border-[#f3f3f3] px-4 py-2 z-[1000] md:px-4 md:py-[10px]"
-      style={{ WebkitBackdropFilter: "none", backdropFilter: "none" }}
-    >
-      <div className="flex w-full items-center justify-between">
-        {/* Logo Kiri */}
-        <div 
-          className="flex items-center flex-shrink-0 cursor-pointer"
-          onClick={handleLogoClick}
-        >
-          <img
-            src="/icon/Logo_Mysembako.svg"
-            alt="MySembako Logo"
-            className="h-9 w-[180px] md:w-[180px] md:h-9 object-contain sm:h-8 sm:w-[136px]"
-          />
-        </div>
-
-        {/* Area Search + Action Right */}
-        <div className="flex items-center gap-4 flex-shrink-0">
-          {/* Search Bar */}
-          <div className="flex-1 flex justify-center px-4">
-            <div className="flex items-center bg-white border border-[#FC6900] rounded-full gap-2 min-w-[120px] py-2 px-4 w-full md:max-w-[400px] md:min-w-[100px] sm:max-w-[180px] sm:text-base"
-              style={{ fontSize: "16px" }}
-            > 
-              <svg width="24" height="24" viewBox="0 0 18 18" fill="none"
-                style={{ minWidth: 24, minHeight: 24 }}>
-                <path
-                  d="M12.5 11H11.71L11.43 10.73C12.41 9.59 13 8.11 13 6.5C13 2.91 10.09 0 6.5 0C2.91 0 0 2.91 0 6.5C0 10.09 2.91 13 6.5 13C8.11 13 9.59 12.41 10.73 11.43L11 11.71V12.5L16 17.49L17.49 16L12.5 11ZM6.5 11C4.01 11 2 8.99 2 6.5C2 4.01 4.01 2 6.5 2C8.99 2 11 4.01 11 6.5C11 8.99 8.99 11 6.5 11Z"
-                  fill="#FC6900"
-                />
-              </svg>
-              <input
-                className="bg-transparent border-none outline-none flex-1 text-[16px] text-[#333] placeholder:text-[#999] placeholder:opacity-100 focus:ring-0"
-                type="text"
-                value={searchQuery}
-                placeholder="Cari Produk..."
-                onChange={e => {
-                  if (typeof onSearchChange === 'function') {
-                    onSearchChange(e);
-                  }
-                }}
-                style={{ minHeight: 32 }}
-                autoComplete="off"
-              />
-            </div>
+    <>
+      <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-stone-200/80 px-4 sm:px-6 py-2.5 shadow-2xs transition-all">
+        <div className="max-w-7xl mx-auto flex w-full items-center justify-between gap-3">
+          {/* Logo Brand (Navigates to /home) */}
+          <div
+            className="flex items-center gap-2 flex-shrink-0 cursor-pointer group focus-ring rounded-xl p-1"
+            onClick={handleLogoClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleLogoClick();
+            }}
+          >
+            <img
+              src="/icon/Logo_Mysembako.svg"
+              alt="MySembako"
+              className="h-8 sm:h-9 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
+            />
           </div>
 
-          {/* Tombol Filter */}
-          <button
-            className={`transition-all duration-200 flex items-center justify-center rounded-full border-none active:scale-95
-              ${isFilterPage ? "ring-2 ring-[#F98D0A] scale-110 bg-[#FC6900] shadow-lg" : ""}
-            `}
-            style={{
-              background: isFilterPage
-                ? "#FC6900"
-                : filterPressed
-                  ? "#FFD4A3"
-                  : "#FFE5D0",
-              width: buttonSize,
-              height: buttonSize,
-              color: isFilterPage ? "#fff" : "#E65100",
-              boxShadow: isFilterPage
-                ? "0 4px 16px 0 #FFD4A355"
-                : undefined
-            }}
-            onMouseDown={() => setFilterPressed(true)}
-            onMouseUp={() => setFilterPressed(false)}
-            onMouseLeave={() => setFilterPressed(false)}
-            onClick={() => {
-              if (isFilterPage) return;
-              handleFilterButtonClick();
-            }}
-            aria-label="Filter"
-            type="button"
-            disabled={isFilterPage}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M4 6H20" stroke={isFilterPage ? "#fff" : "#E65100"} strokeWidth="2.5" strokeLinecap="round" />
-              <circle cx="8" cy="6" r="2" fill={isFilterPage ? "#fff" : "#E65100"} />
-              <path d="M4 12H20" stroke={isFilterPage ? "#fff" : "#E65100"} strokeWidth="2.5" strokeLinecap="round" />
-              <circle cx="16" cy="12" r="2" fill={isFilterPage ? "#fff" : "#E65100"} />
-              <path d="M4 18H20" stroke={isFilterPage ? "#fff" : "#E65100"} strokeWidth="2.5" strokeLinecap="round" />
-              <circle cx="8" cy="18" r="2" fill={isFilterPage ? "#fff" : "#E65100"} />
-            </svg>
-          </button>
-
-          {/* Tombol User */}
-          <button
-            className={`transition-all duration-200 flex items-center justify-center rounded-full border-none active:scale-95
-              ${isProfilePage ? "ring-2 ring-[#F98D0A] scale-110 bg-[#FC6900] shadow-lg" : ""}
-            `}
-            style={{
-              background: isProfilePage
-                ? "#FC6900"
-                : userPressed
-                  ? "#FFD4A3"
-                  : "#FFE5D0",
-              width: buttonSize,
-              height: buttonSize,
-              color: isProfilePage ? "#fff" : "#E65100",
-              boxShadow: isProfilePage
-                ? "0 4px 16px 0 #FFD4A355"
-                : undefined
-            }}
-            onMouseDown={() => setUserPressed(true)}
-            onMouseUp={() => setUserPressed(false)}
-            onMouseLeave={() => setUserPressed(false)}
-            onClick={() => {
-              if (isProfilePage) return;
-              handleUserButtonClick();
-            }}
-            aria-label="Profil Pengguna"
-            type="button"
-            disabled={isProfilePage}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21"
-                stroke={isProfilePage ? "#fff" : "#E65100"}
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
-              <circle
-                cx="12"
-                cy="7"
-                r="4"
-                stroke={isProfilePage ? "#fff" : "#E65100"}
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {/* Modal Profil */}
-      {showProfile && (
-        <div
-          className="fixed inset-0 bg-black/50 z-[1000] flex items-center justify-center p-5"
-          onClick={handleCloseProfile}
-        >
-          <div
-            className="bg-white rounded-2xl p-6 max-w-[400px] w-full shadow-lg"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-[#E65100] m-0 text-xl font-bold">
-                Profil Saya
-              </h2>
-              <button
-                onClick={handleCloseProfile}
-                className="bg-transparent border-none text-2xl cursor-pointer text-[#999] p-0 w-[30px] h-[30px] flex items-center justify-center"
-              >
-                ×
-              </button>
+          {/* Minimal Variant for Checkout / Distraction-free */}
+          {displayVariant === "minimal" ? (
+            <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-stone-600 bg-stone-100 px-3 py-1.5 rounded-full border border-stone-200/80">
+              <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span>Transaksi Aman &amp; Terpercaya</span>
             </div>
-
-            <div className="text-center mb-6">
-              <div className="w-[100px] h-[100px] rounded-full bg-[#FFE5D0] flex items-center justify-center mx-auto mb-4">
-                <svg width="50" height="50" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21"
-                    stroke="#E65100"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <circle
-                    cx="12"
-                    cy="7"
-                    r="4"
-                    stroke="#E65100"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
+          ) : (
+            /* Search Bar */
+            <form
+              onSubmit={handleSearchSubmit}
+              className="flex-1 max-w-lg mx-2 sm:mx-4"
+            >
+              <div className="flex items-center bg-stone-100/90 hover:bg-stone-100 border border-stone-200/90 focus-within:border-pink-500 focus-within:bg-white focus-within:ring-4 focus-within:ring-pink-500/10 rounded-full px-3.5 sm:px-4 py-1.5 sm:py-2 gap-2.5 transition-all">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-stone-400 shrink-0"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
                 </svg>
+                <input
+                  className="bg-transparent border-none outline-none flex-1 text-xs sm:text-sm text-stone-800 placeholder:text-stone-400 focus:ring-0 p-0"
+                  type="text"
+                  value={localSearch}
+                  placeholder="Cari beras, minyak goreng, telur, bumbu..."
+                  onChange={handleSearchInputChange}
+                  autoComplete="off"
+                />
+                {localSearch && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLocalSearch("");
+                      if (typeof onSearchChange === "function") {
+                        onSearchChange({ target: { value: "" } });
+                      }
+                    }}
+                    className="text-stone-400 hover:text-stone-700 text-xs font-bold"
+                  >
+                    &times;
+                  </button>
+                )}
               </div>
-              <h3 className="text-[#333] m-0 mb-2 text-lg font-semibold">
-                {userData.name || "Pengguna"}
-              </h3>
-              <p className="text-[#999] m-0 text-sm">Anggota MySembako</p>
-            </div>
+            </form>
+          )}
 
-            <div className="mb-4 space-y-4">
-              <div>
-                <label className="block mb-2 text-[#333] text-sm font-medium">
-                  Nama
-                </label>
-                <input
-                  type="text"
-                  value={formData.name || ""}
-                  onChange={e => handleProfileChange("name", e.target.value)}
-                  className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none"
-                  placeholder="Masukkan nama Anda"
-                />
-              </div>
-              <div>
-                <label className="block mb-2 text-[#333] text-sm font-medium">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={formData.email || ""}
-                  onChange={e => handleProfileChange("email", e.target.value)}
-                  className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none"
-                  placeholder="Masukkan email Anda"
-                />
-              </div>
-              <div>
-                <label className="block mb-2 text-[#333] text-sm font-medium">
-                  Nomor Telepon
-                </label>
-                <input
-                  type="text"
-                  value={formData.phone || ""}
-                  onChange={e => handleProfileChange("phone", e.target.value)}
-                  className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none"
-                  placeholder="Masukkan nomor telepon"
-                />
-              </div>
-              <div>
-                <label className="block mb-2 text-[#333] text-sm font-medium">
-                  Kota (dibaca otomatis)
-                </label>
-                <input
-                  type="text"
-                  value={userData.location || ""}
-                  readOnly
-                  className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none bg-gray-50"
-                  placeholder="Belum ada lokasi"
-                />
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {displayVariant !== "minimal" && (
+              <>
+                {/* Desktop Cart Button */}
                 <button
                   type="button"
-                  onClick={handleActivateLocation}
-                  className="mt-2 w-full p-3 bg-[#E65100] text-white border-none rounded-lg text-base font-bold cursor-pointer disabled:opacity-70"
-                  disabled={savingLocation}
+                  onClick={() => navigate("/cart")}
+                  aria-label="Keranjang Belanja"
+                  className="hidden md:flex relative w-9 h-9 sm:w-10 sm:h-10 items-center justify-center rounded-full bg-stone-100 hover:bg-pink-50 text-stone-700 hover:text-pink-600 border border-stone-200/80 transition-all active:scale-95 focus-ring"
                 >
-                  {savingLocation ? "Mengambil lokasi..." : "Aktifkan lokasi"}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="9" cy="21" r="1" />
+                    <circle cx="20" cy="21" r="1" />
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                  </svg>
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-pink-600 text-white text-[10px] font-extrabold px-1.5 py-0.2 rounded-full shadow-xs ring-2 ring-white">
+                      {cartCount > 99 ? "99+" : cartCount}
+                    </span>
+                  )}
                 </button>
-              </div>
-            </div>
 
-            <div className="flex flex-col gap-3">
+                {/* Filter Button */}
+                <button
+                  className={`w-9 h-9 sm:w-10 sm:h-10 transition-all duration-200 flex items-center justify-center rounded-full active:scale-95 focus-ring ${
+                    selectedCategory
+                      ? "bg-pink-600 text-white shadow-sm ring-2 ring-pink-300"
+                      : "bg-stone-100 hover:bg-pink-50 text-stone-700 hover:text-pink-600 border border-stone-200/80"
+                  }`}
+                  onClick={() => setShowFilter(true)}
+                  aria-label="Filter Produk"
+                  type="button"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                  </svg>
+                </button>
+              </>
+            )}
+
+            {/* User Profile / Auth Button */}
+            {isAuthenticated ? (
               <button
-                onClick={handleSaveProfile}
-                className="w-full p-3 bg-[#E65100] text-white border-none rounded-lg text-base font-bold cursor-pointer disabled:opacity-70"
-                disabled={savingProfile}
+                className="w-9 h-9 sm:w-10 sm:h-10 transition-all duration-200 flex items-center justify-center rounded-full bg-stone-100 hover:bg-pink-50 text-stone-700 hover:text-pink-600 border border-stone-200/80 active:scale-95 focus-ring"
+                onClick={() => setShowProfile(true)}
+                aria-label="Profil Akun"
+                type="button"
               >
-                {savingProfile ? "Menyimpan..." : "Simpan Profil"}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
               </button>
-              <button
-                onClick={handleLogout}
-                className="w-full p-3 bg-red-500 hover:bg-red-600 text-white border-none rounded-lg text-base font-bold cursor-pointer mt-2 transition"
-                style={{ marginTop: 8 }}
+            ) : (
+              <a
+                href="/login"
+                className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-pink-600 hover:bg-pink-700 text-white text-xs sm:text-sm font-bold shadow-xs active:scale-95 transition"
               >
-                Logout
-              </button>
-            </div>
+                Masuk
+              </a>
+            )}
           </div>
         </div>
-      )}
+      </header>
 
-      {/* Modal Filter */}
-      {showFilter && (
-        <div
-          className="fixed inset-0 bg-black/50 z-[1000] flex items-center justify-center p-5"
-          onClick={handleCloseFilter}
-        >
-          <div
-            className="bg-white rounded-2xl p-6 max-w-[400px] w-full shadow-lg"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-[#E65100] m-0 text-xl font-bold">
-                Filter & Sort
-              </h2>
-              <button
-                onClick={handleCloseFilter}
-                className="bg-transparent border-none text-2xl cursor-pointer text-[#999] p-0 w-[30px] h-[30px] flex items-center justify-center"
-              >
-                ×
-              </button>
+      {/* Profile Modal */}
+      <Modal
+        isOpen={showProfile}
+        onClose={() => setShowProfile(false)}
+        title="Profil & Pengaturan Akun"
+        description="Kelola informasi pribadi dan alamat pengiriman Anda"
+        maxWidth="md"
+      >
+        <form onSubmit={handleSaveProfile} className="space-y-4">
+          {/* User Badge Banner */}
+          <div className="p-4 rounded-2xl bg-pink-50/70 border border-pink-100 flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-xl bg-pink-600 text-white flex items-center justify-center font-extrabold text-lg shadow-xs shrink-0">
+              {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
             </div>
-
-            <div className="mb-5">
-              <label className="block mb-2 text-[#333] text-sm font-medium">
-                Urutkan Berdasarkan
-              </label>
-              <select className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none">
-                <option>Harga Terendah</option>
-                <option>Harga Tertinggi</option>
-                <option>Nama A-Z</option>
-                <option>Nama Z-A</option>
-                <option>Terbaru</option>
-              </select>
-            </div>
-
-            <div className="mb-5">
-              <label className="block mb-2 text-[#333] text-sm font-medium">
-                Filter Kategori
-              </label>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {categoryOptions.slice(0, 10).map((cat) => {
-                  const isActive = selectedCategory === cat;
-                  return (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() =>
-                        typeof onCategorySelect === "function" &&
-                        onCategorySelect(cat)
-                      }
-                      className={`px-3 py-1.5 rounded-full text-sm border transition ${
-                        isActive
-                          ? "bg-orange-500 text-white border-orange-500"
-                          : "bg-white text-gray-700 border-orange-200 hover:border-orange-400"
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  );
-                })}
-              </div>
-              <input
-                type="text"
-                list="topnav-category-list"
-                value={categoryQuery}
-                onChange={(e) =>
-                  typeof onCategoryQueryChange === "function" &&
-                  onCategoryQueryChange(e.target.value)
-                }
-                className="w-full p-3 border border-[#ddd] rounded-lg text-sm outline-none"
-                placeholder="Cari kategori lain atau ketik sendiri"
-              />
-              <datalist id="topnav-category-list">
-                {categoryOptions.map((cat) => (
-                  <option key={cat} value={cat}></option>
-                ))}
-              </datalist>
-              <p className="text-xs text-gray-500 mt-2">
-                Pilih kategori populer atau ketik kategori lain jika tidak ada di daftar.
+            <div className="min-w-0 flex-1">
+              <h4 className="text-sm font-extrabold text-stone-900 truncate">
+                {user?.name || "Pelanggan MySembako"}
+              </h4>
+              <p className="text-xs text-stone-500 truncate">
+                {user?.email || "-"}
               </p>
             </div>
+          </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  handleCloseFilter();
-                }}
-                className="flex-1 p-3 bg-[#E65100] text-white border-none rounded-lg text-base font-bold cursor-pointer"
+          <Input
+            label="Nama Lengkap"
+            value={formData.name}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, name: e.target.value }))
+            }
+            required
+            placeholder="Nama lengkap Anda"
+          />
+
+          <Input
+            label="Alamat Email"
+            type="email"
+            value={formData.email}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, email: e.target.value }))
+            }
+            required
+            placeholder="nama@email.com"
+          />
+
+          <Input
+            label="No. WhatsApp / Telepon"
+            type="tel"
+            value={formData.phone}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, phone: e.target.value }))
+            }
+            placeholder="08123456789"
+          />
+
+          <div>
+            <label className="block text-xs font-bold text-stone-700 mb-1.5 uppercase tracking-wide">
+              Kota Pengiriman (GPS)
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                readOnly
+                value={user?.location || "Belum ada lokasi"}
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm text-stone-700 bg-stone-100 border border-stone-200 outline-none"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleActivateLocation}
+                loading={savingLocation}
+                className="shrink-0"
               >
-                Terapkan
-              </button>
-              <button
-                onClick={() => {
-                  if (typeof onResetFilter === "function") {
-                    onResetFilter();
-                  }
-                  handleCloseFilter();
-                }}
-                className="flex-1 p-3 bg-transparent text-[#E65100] border border-[#E65100] rounded-lg text-base font-bold cursor-pointer"
-              >
-                Reset
-              </button>
+                Perbarui GPS
+              </Button>
             </div>
           </div>
+
+          <div className="pt-4 border-t border-stone-100 flex flex-col gap-2.5">
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
+              loading={savingProfile}
+            >
+              Simpan Perubahan
+            </Button>
+
+            <Button
+              type="button"
+              variant="danger"
+              fullWidth
+              onClick={logout}
+            >
+              Keluar dari Akun
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Filter Modal */}
+      <Modal
+        isOpen={showFilter}
+        onClose={() => setShowFilter(false)}
+        title="Filter & Urutkan Produk"
+        description="Sesuaikan katalog sembako sesuai preferensi belanja Anda"
+        maxWidth="md"
+      >
+        <div className="space-y-5">
+          {/* Urutkan Berdasarkan */}
+          <div>
+            <label className="block text-xs font-bold text-stone-700 mb-2 uppercase tracking-wide">
+              Urutkan Harga &amp; Nama
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { id: "default", label: "Rekomendasi" },
+                { id: "price_asc", label: "Harga Terendah" },
+                { id: "price_desc", label: "Harga Tertinggi" },
+                { id: "name_asc", label: "Nama (A ke Z)" },
+                { id: "name_desc", label: "Nama (Z ke A)" },
+                { id: "latest", label: "Produk Terbaru" },
+              ].map((opt) => {
+                const isSelected = sortBy === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => onSortChange(opt.id)}
+                    className={`px-3 py-2 rounded-xl text-xs text-left transition-all active:scale-95 border ${
+                      isSelected
+                        ? "bg-pink-600 text-white border-pink-600 font-bold shadow-2xs"
+                        : "bg-stone-50 text-stone-700 border-stone-200 hover:border-stone-300 font-medium"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Filter Kategori */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-bold text-stone-700 uppercase tracking-wide">
+                Kategori Populer
+              </label>
+              {selectedCategory && (
+                <button
+                  type="button"
+                  onClick={() => onCategorySelect("")}
+                  className="text-xs font-bold text-pink-600 hover:underline"
+                >
+                  Hapus Pilihan
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {categoryOptions.map((cat) => {
+                const isActive = selectedCategory === cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => onCategorySelect(cat)}
+                    className={`px-3 py-1.5 rounded-full text-xs transition-all active:scale-95 border ${
+                      isActive
+                        ? "bg-pink-600 text-white border-pink-600 font-bold shadow-2xs"
+                        : "bg-stone-50 text-stone-700 border-stone-200 hover:border-pink-300 font-medium"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-stone-100 flex gap-3">
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={() => setShowFilter(false)}
+            >
+              Terapkan Filter
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                onResetFilter();
+                setShowFilter(false);
+              }}
+            >
+              Reset
+            </Button>
+          </div>
         </div>
-      )}
-    </header>
+      </Modal>
+    </>
   );
 };
 

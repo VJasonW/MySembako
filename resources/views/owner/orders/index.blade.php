@@ -19,7 +19,7 @@
             <div class="flex justify-between items-center py-4">
                 <div class="flex items-center gap-3">
                     <img src="/icon/Logo_Mysembako.svg" alt="Logo" class="h-9" onerror="this.style.display='none'">
-                    <span class="text-xl font-bold text-orange-500 tracking-wide">
+                    <span class="text-xl font-bold text-pink-600 tracking-wide">
                         {{ Auth::user()->name ?? 'MySembako' }}
                     </span>
                 </div>
@@ -57,7 +57,7 @@
         <div class="mb-6 bg-white rounded-xl shadow-sm p-4">
             <div class="flex gap-2 flex-wrap">
                 <a href="{{ route('owner.orders.index', ['status' => 'all']) }}" 
-                   class="px-4 py-2 rounded-lg font-semibold text-sm transition-colors {{ $status === 'all' ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}">
+                   class="px-4 py-2 rounded-lg font-semibold text-sm transition-colors {{ $status === 'all' ? 'bg-pink-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300' }}">
                     Semua
                 </a>
                 <a href="{{ route('owner.orders.index', ['status' => 'pending']) }}" 
@@ -104,7 +104,7 @@
                                         <div class="text-sm text-gray-500">{{ $order->buyer->email ?? '-' }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="font-semibold text-orange-500">Rp {{ number_format($order->subtotal ?? 0, 0, ',', '.') }}</div>
+                                        <div class="font-semibold text-pink-600">Rp {{ number_format($order->subtotal ?? 0, 0, ',', '.') }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="px-2 py-1 text-xs font-semibold rounded-full 

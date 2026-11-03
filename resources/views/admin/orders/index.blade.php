@@ -31,7 +31,7 @@
                             <div class="text-sm text-gray-500">{{ $order->buyer->email ?? '-' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="font-semibold text-orange-500">Rp {{ number_format($order->total_price, 0, ',', '.') }}</div>
+                            <div class="font-semibold text-pink-600">Rp {{ number_format($order->total_price, 0, ',', '.') }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="px-2 py-1 text-xs font-semibold rounded-full 

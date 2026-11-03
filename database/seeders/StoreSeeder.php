@@ -200,6 +200,7 @@ class StoreSeeder extends Seeder
         // Insert produk untuk Toko Semarang
         foreach ($productsSemarang as $productData) {
             $category = $categories->firstWhere('name', $productData['category']);
+            $imagePath = $this->generateProductImage($productData['name'], $productData['category']);
             Product::updateOrCreate(
                 [
                     'owner_id' => $storeSemarang->id,
@@ -211,6 +212,7 @@ class StoreSeeder extends Seeder
                     'price' => $productData['price'],
                     'stock' => $productData['stock'],
                     'description' => $productData['description'],
+                    'image' => $imagePath,
                     'status' => $productData['status'],
                     'category_id' => $category ? $category->id : null,
                 ]
@@ -220,6 +222,7 @@ class StoreSeeder extends Seeder
         // Insert produk untuk Toko Jakarta
         foreach ($productsJakarta as $productData) {
             $category = $categories->firstWhere('name', $productData['category']);
+            $imagePath = $this->generateProductImage($productData['name'], $productData['category']);
             Product::updateOrCreate(
                 [
                     'owner_id' => $storeJakarta->id,
@@ -231,6 +234,7 @@ class StoreSeeder extends Seeder
                     'price' => $productData['price'],
                     'stock' => $productData['stock'],
                     'description' => $productData['description'],
+                    'image' => $imagePath,
                     'status' => $productData['status'],
                     'category_id' => $category ? $category->id : null,
                 ]
@@ -280,6 +284,94 @@ class StoreSeeder extends Seeder
         }
 
         return $categories;
+    }
+
+    /**
+     * Generate sample image file for product using GD.
+     */
+    private function generateProductImage(string $productName, string $categoryName): ?string
+    {
+        $dir = storage_path('app/public/products');
+        if (!file_exists($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $filename = 'products/' . Str::slug($productName) . '.png';
+        $fullPath = storage_path('app/public/' . $filename);
+
+        $colorMap = [
+            'Beras'             => ['bg' => [255, 248, 231], 'accent' => [212, 163, 115], 'text' => [120, 80, 40]],
+            'Minyak Goreng'     => ['bg' => [254, 243, 199], 'accent' => [245, 158, 11],  'text' => [146, 64, 14]],
+            'Gula Pasir'        => ['bg' => [241, 245, 249], 'accent' => [148, 163, 184], 'text' => [51, 65, 85]],
+            'Telur'             => ['bg' => [254, 237, 213], 'accent' => [249, 115, 22],  'text' => [194, 65, 12]],
+            'Bumbu Dapur'       => ['bg' => [220, 252, 231], 'accent' => [34, 197, 94],   'text' => [21, 128, 61]],
+            'Mie & Pasta'       => ['bg' => [254, 226, 226], 'accent' => [239, 68, 68],   'text' => [185, 28, 28]],
+            'Kopi & Teh'        => ['bg' => [245, 230, 211], 'accent' => [180, 83, 9],    'text' => [120, 53, 15]],
+            'Susu & Olahan'     => ['bg' => [224, 242, 254], 'accent' => [14, 165, 233],  'text' => [3, 105, 161]],
+            'Air Minum / Galon' => ['bg' => [224, 242, 254], 'accent' => [59, 130, 246],  'text' => [29, 78, 216]],
+            'Gas LPG'           => ['bg' => [254, 215, 170], 'accent' => [234, 88, 12],   'text' => [154, 52, 18]],
+        ];
+
+        $colors = $colorMap[$categoryName] ?? ['bg' => [243, 244, 246], 'accent' => [156, 163, 175], 'text' => [55, 65, 81]];
+
+        if (extension_loaded('gd')) {
+            $width = 400;
+            $height = 400;
+            $image = imagecreatetruecolor($width, $height);
+
+            $bgColor = imagecolorallocate($image, $colors['bg'][0], $colors['bg'][1], $colors['bg'][2]);
+            $accentColor = imagecolorallocate($image, $colors['accent'][0], $colors['accent'][1], $colors['accent'][2]);
+            $textColor = imagecolorallocate($image, $colors['text'][0], $colors['text'][1], $colors['text'][2]);
+            $white = imagecolorallocate($image, 255, 255, 255);
+
+            imagefill($image, 0, 0, $bgColor);
+
+            // Draw border frame
+            imagesetthickness($image, 4);
+            imagerectangle($image, 16, 16, $width - 16, $height - 16, $accentColor);
+
+            // Category Badge Box
+            imagefilledrectangle($image, 40, 40, $width - 40, 80, $accentColor);
+            $catText = strtoupper($categoryName);
+            $catTextX = (int) (($width - (strlen($catText) * imagefontwidth(3))) / 2);
+            imagestring($image, 3, $catTextX, 52, $catText, $white);
+
+            // Product Name (wrapped into lines)
+            $words = explode(' ', $productName);
+            $lines = [];
+            $currentLine = '';
+            foreach ($words as $word) {
+                if (strlen($currentLine . ' ' . $word) <= 22) {
+                    $currentLine = trim($currentLine . ' ' . $word);
+                } else {
+                    $lines[] = $currentLine;
+                    $currentLine = $word;
+                }
+            }
+            if ($currentLine !== '') {
+                $lines[] = $currentLine;
+            }
+
+            $font = 5;
+            $fontHeight = imagefontheight($font);
+            $startY = (int) (200 - ((count($lines) * ($fontHeight + 8)) / 2));
+
+            foreach ($lines as $i => $line) {
+                $x = (int) (($width - (strlen($line) * imagefontwidth($font))) / 2);
+                $y = $startY + ($i * ($fontHeight + 8));
+                imagestring($image, $font, $x, $y, $line, $textColor);
+            }
+
+            // Subtitle badge
+            $footerText = 'MYSEMBAKO';
+            $footerX = (int) (($width - (strlen($footerText) * imagefontwidth(2))) / 2);
+            imagestring($image, 2, $footerX, 340, $footerText, $accentColor);
+
+            imagepng($image, $fullPath);
+            imagedestroy($image);
+        }
+
+        return $filename;
     }
 }
 

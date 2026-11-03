@@ -37,6 +37,18 @@ class AdminSeeder extends Seeder
             ]
         );
 
+        // Create Buyer account (pembeli)
+        User::updateOrCreate(
+            ['email' => 'buyer@mysembako.com'],
+            [
+                'name' => 'Pembeli Demo',
+                'email' => 'buyer@mysembako.com',
+                'password' => Hash::make('buyer123'),
+                'role_id' => 2, // Buyer role (pembeli)
+                'phone' => '081234567890',
+            ]
+        );
+
         $this->command->info('Owner user created successfully!');
         $this->command->info('Email: owner@mysembako.com');
         $this->command->info('Password: owner123');
@@ -44,6 +56,10 @@ class AdminSeeder extends Seeder
         $this->command->info('Web Admin user created successfully!');
         $this->command->info('Email: admin@mysembako.com');
         $this->command->info('Password: admin123');
+        $this->command->info('');
+        $this->command->info('Buyer user created successfully!');
+        $this->command->info('Email: buyer@mysembako.com');
+        $this->command->info('Password: buyer123');
     }
 }
 

@@ -19,7 +19,7 @@
             <div class="flex justify-between items-center py-4">
                 <div class="flex items-center gap-3">
                     <img src="/icon/Logo_Mysembako.svg" alt="Logo" class="h-9" onerror="this.style.display='none'">
-                    <span class="text-xl font-bold text-orange-500 tracking-wide">MySembako Admin</span>
+                    <span class="text-xl font-bold text-pink-600 tracking-wide">MySembako Admin</span>
                 </div>
                 <a href="{{ route('products.index') }}" class="px-4 py-2 bg-gray-600 text-white rounded-full font-semibold text-sm hover:bg-gray-700 transition-colors">
                     Kembali
@@ -60,7 +60,7 @@
                         name="nama_produk" 
                         value="{{ old('nama_produk', $product->name) }}" 
                         required
-                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-orange-500 transition-colors"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-pink-500 transition-colors"
                         placeholder="Masukkan nama produk"
                     >
                 </div>
@@ -78,11 +78,11 @@
                                 name="kategori" 
                                 value="{{ old('kategori', optional($product->category)->name ?? '') }}" 
                                 required
-                                class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-orange-500 transition-colors"
+                                class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-pink-500 transition-colors"
                                 placeholder="Pilih atau ketik kategori (bisa kategori baru)"
                                 autocomplete="off"
                             >
-                            <div id="kategori-suggestions" class="absolute z-20 mt-1 w-full bg-white border border-orange-100 rounded-xl shadow-sm hidden max-h-56 overflow-auto"></div>
+                            <div id="kategori-suggestions" class="absolute z-20 mt-1 w-full bg-white border border-pink-100 rounded-xl shadow-sm hidden max-h-56 overflow-auto"></div>
                         </div>
                         <div class="flex flex-wrap gap-2" id="kategori-chips"></div>
                         <small class="text-gray-500 block">Klik chip di atas atau ketik untuk mencari/menambah kategori baru.</small>
@@ -102,7 +102,7 @@
                         min="0" 
                         step="1" 
                         required
-                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-orange-500 transition-colors"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-pink-500 transition-colors"
                         placeholder="Masukkan harga"
                     >
                     <p class="mt-2 text-sm text-gray-500">Masukkan harga dalam rupiah (tanpa titik atau koma)</p>
@@ -121,7 +121,7 @@
                         min="0" 
                         step="1" 
                         required
-                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-orange-500 transition-colors"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-pink-500 transition-colors"
                         placeholder="Masukkan jumlah stok"
                     >
                     <p class="mt-2 text-sm text-gray-500">Masukkan jumlah stok produk yang tersedia</p>
@@ -136,7 +136,7 @@
                         id="deskripsi" 
                         name="deskripsi" 
                         rows="4"
-                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-2xl focus:outline-none focus:border-orange-500 transition-colors resize-y"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-2xl focus:outline-none focus:border-pink-500 transition-colors resize-y"
                         placeholder="Deskripsi produk..."
                     >{{ old('deskripsi', $product->description) }}</textarea>
                 </div>
@@ -163,7 +163,7 @@
                         name="foto" 
                         accept="image/*" 
                         onchange="previewImage(this)"
-                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-orange-500 transition-colors file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-pink-500 transition-colors file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer"
                     >
                     <p class="mt-2 text-sm text-gray-500">Format: JPG, PNG, GIF. Maksimal 2MB. Kosongkan jika tidak ingin mengubah foto.</p>
                     <div id="preview" class="mt-4 hidden">
@@ -177,7 +177,7 @@
                     <a href="{{ route('products.index') }}" class="flex-1 px-6 py-3 bg-gray-600 text-white rounded-full font-semibold text-center hover:bg-gray-700 transition-colors">
                         Batal
                     </a>
-                    <button type="submit" class="flex-1 px-6 py-3 bg-orange-500 text-white rounded-full font-semibold hover:bg-orange-600 transition-colors">
+                    <button type="submit" class="flex-1 px-6 py-3 bg-pink-600 text-white rounded-full font-semibold hover:bg-pink-700 transition-colors">
                         Update Produk
                     </button>
                 </div>
@@ -201,7 +201,7 @@
                 categories.slice(0, 20).forEach((cat) => {
                     const btn = document.createElement('button');
                     btn.type = 'button';
-                    btn.className = 'px-3 py-1.5 rounded-full text-sm border border-orange-200 text-gray-800 bg-orange-50 hover:border-orange-400 transition';
+                    btn.className = 'px-3 py-1.5 rounded-full text-sm border border-pink-200 text-gray-800 bg-pink-50 hover:border-pink-400 transition';
                     btn.textContent = cat;
                     btn.onclick = () => {
                         input.value = cat;
@@ -217,7 +217,7 @@
                     return;
                 }
                 suggestionsBox.innerHTML = items
-                    .map((item) => `<button type="button" class="block w-full text-left px-4 py-2 hover:bg-orange-50">${item}</button>`)
+                    .map((item) => `<button type="button" class="block w-full text-left px-4 py-2 hover:bg-pink-50">${item}</button>`)
                     .join('');
                 Array.from(suggestionsBox.children).forEach((btn) => {
                     btn.onclick = () => {

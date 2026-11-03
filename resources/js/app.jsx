@@ -3,25 +3,25 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import Page from './routes';
-
-console.log('App.jsx loaded');
+import { ToastProvider } from './context/ToastContext';
+import { AuthProvider } from './context/AuthContext';
+import { CartProvider } from './context/CartContext';
 
 const container = document.getElementById('app');
-console.log('Container element:', container);
 
 if (container) {
     const root = createRoot(container);
-    console.log('React root created, rendering...');
     root.render(
         <React.StrictMode>
             <BrowserRouter>
-                <Page />
+                <ToastProvider>
+                    <AuthProvider>
+                        <CartProvider>
+                            <Page />
+                        </CartProvider>
+                    </AuthProvider>
+                </ToastProvider>
             </BrowserRouter>
         </React.StrictMode>
     );
-    console.log('React app rendered');
-} else {
-    console.error('Container element dengan id "app" tidak ditemukan!');
 }
-
-

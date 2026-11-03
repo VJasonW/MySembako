@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="mb-8">
-    <a href="{{ route('admin.users') }}" class="text-orange-500 hover:text-orange-600 mb-4 inline-block">← Kembali</a>
+    <a href="{{ route('admin.users') }}" class="text-pink-600 hover:text-pink-700 mb-4 inline-block">← Kembali</a>
     <h1 class="text-3xl font-bold text-gray-900">Detail User</h1>
 </div>
 
@@ -39,7 +39,7 @@
     </div>
     
     <div class="mt-6 flex gap-4">
-        <a href="{{ route('admin.users.edit', $user) }}" class="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600">Edit User</a>
+        <a href="{{ route('admin.users.edit', $user) }}" class="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700">Edit User</a>
     </div>
 </div>
 @endsection

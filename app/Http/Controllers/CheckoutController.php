@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Address;
+use App\Models\Cart;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Cart;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,11 +18,7 @@ class CheckoutController extends Controller
      */
     public function store(Request $request)
     {
-        $user = Auth::user();
-        
-        if (!$user) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
+        $userId = Auth::id();
 
         $validated = $request->validate([
             'items' => 'required|array|min:1',
@@ -34,63 +31,61 @@ class CheckoutController extends Controller
         ]);
 
         // Verify address belongs to user
-        $address = \App\Models\Address::where('id', $validated['address_id'])
-            ->where('user_id', $user->id)
+        $address = Address::where('id', $validated['address_id'])
+            ->where('user_id', $userId)
             ->first();
 
         if (!$address) {
             return response()->json(['message' => 'Alamat tidak valid'], 400);
         }
 
-        DB::beginTransaction();
         try {
-            // Create order
-            $order = Order::create([
-                'buyer_id' => $user->id,
-                'total_price' => $validated['total_price'],
-                'status' => 'pending',
-                'payment_method' => $validated['payment_method'],
-            ]);
-
-            // Create order items and validate stock
-            foreach ($validated['items'] as $item) {
-                $product = Product::findOrFail($item['product_id']);
-                
-                // Check stock availability
-                if ($product->stock < $item['quantity']) {
-                    DB::rollBack();
-                    return response()->json([
-                        'message' => "Stok tidak mencukupi untuk produk: {$product->name}. Stok tersedia: {$product->stock}"
-                    ], 400);
-                }
-
-                // Create order item
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'price' => $item['price'],
+            $order = DB::transaction(function () use ($userId, $validated) {
+                // Create order
+                $order = Order::create([
+                    'buyer_id' => $userId,
+                    'total_price' => $validated['total_price'],
+                    'status' => 'pending',
+                    'payment_method' => $validated['payment_method'],
                 ]);
 
-                // Reduce stock
-                $product->decrement('stock', $item['quantity']);
-            }
+                // Create order items and validate stock
+                foreach ($validated['items'] as $item) {
+                    $product = Product::lockForUpdate()->findOrFail($item['product_id']);
 
-            // Remove items from cart
-            $productIds = collect($validated['items'])->pluck('product_id');
-            Cart::where('user_id', $user->id)
-                ->whereIn('product_id', $productIds)
-                ->delete();
+                    if ($product->stock < $item['quantity']) {
+                        throw new \RuntimeException(
+                            "Stok tidak mencukupi untuk produk: {$product->name}. Stok tersedia: {$product->stock}"
+                        );
+                    }
 
-            DB::commit();
+                    OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => $item['product_id'],
+                        'quantity' => $item['quantity'],
+                        'price' => $item['price'],
+                    ]);
+
+                    $product->decrement('stock', $item['quantity']);
+                }
+
+                // Remove items from cart
+                $productIds = collect($validated['items'])->pluck('product_id');
+                Cart::where('user_id', $userId)
+                    ->whereIn('product_id', $productIds)
+                    ->delete();
+
+                return $order;
+            });
 
             return response()->json([
                 'message' => 'Pesanan berhasil dibuat',
                 'order_id' => $order->id,
             ], 201);
 
-        } catch (\Exception $e) {
-            DB::rollBack();
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
+        } catch (\Throwable $e) {
             return response()->json([
                 'message' => 'Terjadi kesalahan saat membuat pesanan',
                 'error' => $e->getMessage()
@@ -98,4 +93,3 @@ class CheckoutController extends Controller
         }
     }
 }
-

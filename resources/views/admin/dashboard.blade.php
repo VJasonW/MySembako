@@ -48,14 +48,14 @@
                 <p class="text-sm text-gray-600">Total Pesanan</p>
                 <p class="text-3xl font-bold text-gray-900 mt-2">{{ $stats['total_orders'] }}</p>
             </div>
-            <div class="bg-orange-100 p-3 rounded-lg">
-                <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="bg-pink-100 p-3 rounded-lg">
+                <svg class="w-8 h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                 </svg>
             </div>
         </div>
         <div class="mt-4">
-            <span class="text-sm text-gray-600">Pending: <strong class="text-orange-600">{{ $stats['pending_orders'] }}</strong></span>
+            <span class="text-sm text-gray-600">Pending: <strong class="text-pink-600">{{ $stats['pending_orders'] }}</strong></span>
         </div>
     </div>
 
@@ -78,7 +78,7 @@
 <div class="bg-white rounded-xl shadow-sm p-6">
     <div class="flex items-center justify-between mb-6">
         <h2 class="text-xl font-bold text-gray-900">Aktivitas Terbaru</h2>
-        <a href="{{ route('admin.activity-logs') }}" class="text-orange-500 hover:text-orange-600 text-sm font-semibold">Lihat Semua</a>
+        <a href="{{ route('admin.activity-logs') }}" class="text-pink-600 hover:text-pink-700 text-sm font-semibold">Lihat Semua</a>
     </div>
     
     @if($stats['recent_activities']->count() > 0)

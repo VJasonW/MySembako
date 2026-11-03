@@ -30,7 +30,7 @@
         .brand {
             font-weight: 700;
             font-size: 16px;
-            color: #ef6b49;
+            color: #db2777;
             letter-spacing: 0.08em;
         }
         .content {
@@ -116,7 +116,7 @@
             width: 100%;
             height: 40px;
             border-radius: 20px;
-            background: #ef6b49;
+            background: #db2777;
             color: #fff;
             font-weight: 600;
             font-size: 15px;
@@ -128,7 +128,7 @@
             letter-spacing: 0.03em;
         }
         .btn-submit:hover {
-            background: #e55a39;
+            background: #be185d;
         }
         .alert {
             padding: 12px;
@@ -150,10 +150,10 @@
             height: 40px;
             border-radius: 20px;
             background: transparent;
-            color: #ef6b49;
+            color: #db2777;
             font-weight: 600;
             font-size: 15px;
-            border: 2px solid #ef6b49;
+            border: 2px solid #db2777;
             margin-top: 8px;
             margin-bottom: 16px;
             cursor: pointer;
@@ -166,7 +166,7 @@
             transition: all 0.3s;
         }
         .btn-buka-toko:hover {
-            background: #ef6b49;
+            background: #db2777;
             color: #fff;
         }
     </style>

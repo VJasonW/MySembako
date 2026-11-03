@@ -2,60 +2,24 @@
  * Utility functions for handling user location
  */
 
-/**
- * Get user location from localStorage
- * @returns {Object|null} Location object with latitude, longitude, accuracy, and timestamp, or null if not found
- */
-export const getUserLocation = () => {
-  try {
-    const locationData = localStorage.getItem('userLocation');
-    if (locationData) {
-      return JSON.parse(locationData);
-    }
-    return null;
-  } catch (error) {
-    console.error('Error getting user location:', error);
-    return null;
-  }
-};
+export const CITY_BOXES = [
+  { name: "Jakarta", lat: [-6.4, -6.0], lng: [106.6, 107.0] },
+  { name: "Semarang", lat: [-7.1, -6.8], lng: [110.3, 110.6] },
+  { name: "Surabaya", lat: [-7.4, -7.1], lng: [112.6, 112.9] },
+  { name: "Jogja", lat: [-7.9, -7.6], lng: [110.3, 110.6] },
+];
 
-/**
- * Get user location from sessionStorage (faster access)
- * @returns {Object|null} Location object with latitude, longitude, accuracy, and timestamp, or null if not found
- */
-export const getUserLocationFromSession = () => {
-  try {
-    const locationData = sessionStorage.getItem('userLocation');
-    if (locationData) {
-      return JSON.parse(locationData);
-    }
-    return null;
-  } catch (error) {
-    console.error('Error getting user location from session:', error);
-    return null;
-  }
-};
-
-/**
- * Check if user location is available
- * @returns {boolean} True if location is available, false otherwise
- */
-export const hasUserLocation = () => {
-  return getUserLocation() !== null;
-};
-
-/**
- * Clear user location from storage
- */
-export const clearUserLocation = () => {
-  localStorage.removeItem('userLocation');
-  sessionStorage.removeItem('userLocation');
+export const cityFromCoords = (lat, lng) => {
+  const match = CITY_BOXES.find(
+    (b) => lat >= b.lat[0] && lat <= b.lat[1] && lng >= b.lng[0] && lng <= b.lng[1]
+  );
+  return match ? match.name : null;
 };
 
 /**
  * Request user location using Geolocation API
- * @param {Object} options - Geolocation options (enableHighAccuracy, timeout, maximumAge)
- * @returns {Promise<Object>} Promise that resolves with location data or rejects with error
+ * @param {Object} options - Geolocation options
+ * @returns {Promise<Object>} Promise that resolves with location data
  */
 export const requestUserLocation = (options = {}) => {
   return new Promise((resolve, reject) => {
@@ -67,69 +31,30 @@ export const requestUserLocation = (options = {}) => {
     const defaultOptions = {
       enableHighAccuracy: true,
       timeout: 10000,
-      maximumAge: 0
+      maximumAge: 0,
     };
-
-    const geolocationOptions = { ...defaultOptions, ...options };
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const locationData = {
+        resolve({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           accuracy: position.coords.accuracy,
-          timestamp: new Date().toISOString()
-        };
-
-        // Save to storage
-        localStorage.setItem('userLocation', JSON.stringify(locationData));
-        sessionStorage.setItem('userLocation', JSON.stringify(locationData));
-
-        resolve(locationData);
+          timestamp: new Date().toISOString(),
+        });
       },
       (error) => {
-        let errorMessage = 'Failed to get your location. ';
-        
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage += 'Please allow location access in your browser settings.';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage += 'Location information is unavailable.';
-            break;
-          case error.TIMEOUT:
-            errorMessage += 'The request to get your location timed out.';
-            break;
-          default:
-            errorMessage += 'An unknown error occurred.';
-            break;
+        let msg = 'Gagal mengakses lokasi. ';
+        if (error.code === error.PERMISSION_DENIED) {
+          msg += 'Izin lokasi tidak diberikan.';
+        } else if (error.code === error.TIMEOUT) {
+          msg += 'Waktu permintaan lokasi habis.';
+        } else {
+          msg += 'Lokasi tidak tersedia.';
         }
-
-        reject(new Error(errorMessage));
+        reject(new Error(msg));
       },
-      geolocationOptions
+      { ...defaultOptions, ...options }
     );
   });
 };
-
-/**
- * Calculate distance between two coordinates using Haversine formula
- * @param {number} lat1 - Latitude of first point
- * @param {number} lon1 - Longitude of first point
- * @param {number} lat2 - Latitude of second point
- * @param {number} lon2 - Longitude of second point
- * @returns {number} Distance in kilometers
- */
-export const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371; // Radius of the Earth in kilometers
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c;
-  return distance;
-};
-

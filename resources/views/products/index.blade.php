@@ -19,7 +19,7 @@
             <div class="flex justify-between items-center py-4">
                 <div class="flex items-center gap-3">
                     <img src="/icon/Logo_Mysembako.svg" alt="Logo" class="h-9" onerror="this.style.display='none'">
-                    <span class="text-xl font-bold text-orange-500 tracking-wide">
+                    <span class="text-xl font-bold text-pink-600 tracking-wide">
                         {{ session('store_name', Auth::user()->name ?? 'MySembako Admin') }}
                     </span>
                 </div>
@@ -42,7 +42,7 @@
                 <a href="{{ route('owner.orders.index') }}" class="px-6 py-3 bg-blue-500 text-white rounded-full font-semibold hover:bg-blue-600 transition-colors">
                     Kelola Pesanan
                 </a>
-                <a href="{{ route('products.create') }}" class="px-6 py-3 bg-orange-500 text-white rounded-full font-semibold hover:bg-orange-600 transition-colors">
+                <a href="{{ route('products.create') }}" class="px-6 py-3 bg-pink-600 text-white rounded-full font-semibold hover:bg-pink-700 transition-colors">
                     + Tambah Produk
                 </a>
             </div>
@@ -86,7 +86,7 @@
                                         <div class="font-semibold text-gray-900">{{ $product->name }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="font-semibold text-orange-500">Rp {{ number_format($product->price, 0, ',', '.') }}</div>
+                                        <div class="font-semibold text-pink-600">Rp {{ number_format($product->price, 0, ',', '.') }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center gap-3">
@@ -132,7 +132,7 @@
                     </svg>
                     <h3 class="text-lg font-semibold text-gray-700 mb-2">Belum ada produk</h3>
                     <p class="text-gray-500 mb-6">Mulai dengan menambahkan produk pertama Anda</p>
-                    <a href="{{ route('products.create') }}" class="inline-block px-6 py-3 bg-orange-500 text-white rounded-full font-semibold hover:bg-orange-600 transition-colors">
+                    <a href="{{ route('products.create') }}" class="inline-block px-6 py-3 bg-pink-600 text-white rounded-full font-semibold hover:bg-pink-700 transition-colors">
                         Tambah Produk
                     </a>
                 </div>
@@ -161,7 +161,7 @@
                         min="0" 
                         step="1" 
                         required
-                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-orange-500 transition-colors"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:border-pink-500 transition-colors"
                         placeholder="Masukkan jumlah stok"
                     >
                 </div>
@@ -176,7 +176,7 @@
                     </button>
                     <button 
                         type="submit" 
-                        class="flex-1 px-6 py-3 bg-orange-500 text-white rounded-full font-semibold hover:bg-orange-600 transition-colors"
+                        class="flex-1 px-6 py-3 bg-pink-600 text-white rounded-full font-semibold hover:bg-pink-700 transition-colors"
                     >
                         Update Stok
                     </button>
